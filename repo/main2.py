@@ -101,7 +101,7 @@ if __name__ == "__main__":
         test_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         
     elif args.model_type == "simple_vit":
-        from model import simple_vit
+        import simple_vit
         train_model = simple_vit.SimpleViT(image_size = 100,
                                             patch_size = args.patch_size,
                                             num_classes = 1,
@@ -139,18 +139,9 @@ if __name__ == "__main__":
         delta=args.delta,
         path=f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt",
     )
-    
+
     #### Model initialization
-    # print("Use backbone cnn", args._use_backbone_cnn)
-    
-    
-    
     ### dataset
-    
-    
-    
-    
-    # breakpoint()
     ### loss & optimizer
     mse_loss = nn.MSELoss()
     optimizer = torch.optim.Adam(
