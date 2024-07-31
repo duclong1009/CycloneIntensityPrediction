@@ -117,6 +117,7 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     # args.name = "test"
     if args._use_wandb:
+        wandb.login(key='ab2505638ca8fabd9114e88f3449ddb51e15a942')
         wandb.init(
             entity="aiotlab",
             project="Cyclone intensity prediction",
