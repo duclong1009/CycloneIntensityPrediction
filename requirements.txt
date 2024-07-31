@@ -1,1 +1,8 @@
+torchvision
+torch
+wandb
+numpy
+pandas
+matplotlib
+scikit-learn
 einops
