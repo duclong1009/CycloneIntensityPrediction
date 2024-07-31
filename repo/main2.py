@@ -20,7 +20,7 @@ def get_option():
     parser.add_argument("--dim",type=int, default=1024)
     parser.add_argument("--heads",type=int, default=16)
     
-    parser.add_argument("--model_type",  choices=['simple_cnn','cnn','c_attention_cnn','g_attention_cnn','simple_vit'], default= "simple_cnn")
+    parser.add_argument("--model_type",  choices=['simple_cnn','cnn','c_attention_cnn','g_attention_cnn','simple_vit','simple_vit2'], default= "simple_cnn")
     parser.add_argument("--backbone_name",type=str, default='resnet18')
     parser.add_argument("--radius",type=int, default=30)
     # parser.add_argument("--backbone_name", ty)
@@ -48,6 +48,7 @@ def get_option():
     parser.add_argument("--group_name",type=str, default='test_group')
     parser.add_argument("--_use_wandb",action="store_true", default=False)
     
+    parser.add_argument("--loss_func",type=str, default='mse', choices=['weighted_mse','mse'])
     ###
     # training 
     args = parser.parse_args()
@@ -74,28 +75,28 @@ if __name__ == "__main__":
 
     
     if  args.model_type == 'simple_cnn':
-        args.name = (f"{args.model_type}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
         train_model = model.SimpleCNN(input_channels= input_channels, output_channels=args.output_channels,args=args,)
         train_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         
     elif args.model_type == 'cnn':
-        args.name = (f"{args.model_type}__{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
         train_model = model.FeatureExtractorModel(num_input_channels=input_channels, output_dim=1, backbone_name=args.backbone_name)
         train_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     elif args.model_type == 'c_attention_cnn':
         train_model = model.Channel_SelfAttentionCNN(num_input_channels=input_channels, output_dim=1, backbone_name=args.backbone_name)
-        args.name = (f"{args.model_type}__{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
         train_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
     elif args.model_type == 'g_attention_cnn':
         train_model = model.Grid_SelfAttentionCNN(num_input_channels=input_channels, output_dim=1, backbone_name=args.backbone_name)
-        args.name = (f"{args.model_type}__{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
         train_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
@@ -111,10 +112,26 @@ if __name__ == "__main__":
                                             heads = args.heads,
                                             mlp_dim = 2048)
         
-        args.name = (f"{args.model_type}__{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    elif args.model_type == "simple_vit2":
+        import simple_vit
+        train_model = simple_vit.SimpleViT2(image_size = 100,
+                                            patch_size = args.patch_size,
+                                            num_classes = 1,
+                                            channels=58,
+                                            dim = args.dim,
+                                            depth = 6,
+                                            heads = args.heads,
+                                            mlp_dim = 2048)
+        
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        
     # args.name = "test"
     if args._use_wandb:
         wandb.login(key='ab2505638ca8fabd9114e88f3449ddb51e15a942')
@@ -127,7 +144,7 @@ if __name__ == "__main__":
         )
     
     ### Data loading and Data preprocess
-    session_name = f"test_model"
+
     
     if not os.path.exists(f"output/{args.group_name}/checkpoint/"):
         print(f"Make dir output/{args.group_name}/checkpoint/ ...")
@@ -144,7 +161,13 @@ if __name__ == "__main__":
     #### Model initialization
     ### dataset
     ### loss & optimizer
-    mse_loss = nn.MSELoss()
+    if args.loss_func == "mse":
+        loss_func = nn.MSELoss()
+    elif args.loss_func == "weighted_mse":
+        import loss
+        loss_func = loss.WeightedMSELoss()
+    else:
+        raise("Not correct loss function!")
     optimizer = torch.optim.Adam(
         train_model.parameters(), lr=args.lr, weight_decay=args.l2_coef
     )
@@ -152,7 +175,7 @@ if __name__ == "__main__":
     
     
     # dataset = dataloader
-    list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, mse_loss, optimizer, args, torch.device("cuda:0"))
+    list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, torch.device("cuda:0"))
     
     
     ### 
@@ -168,7 +191,7 @@ if __name__ == "__main__":
     test_dataloader=  DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     print("--------Testing-------")
-    list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_ = model_utils.test_func(train_model, test_dataloader, mse_loss, args, bt_scaler,device=torch.device("cuda:0"))
+    list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_ = model_utils.test_func(train_model, test_dataloader, loss_func, args, bt_scaler,device=torch.device("cuda:0"))
     if args._use_wandb:
         wandb.log({"mae":mae,
                    "mse":mse,

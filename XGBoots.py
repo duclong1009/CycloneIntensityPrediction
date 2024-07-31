@@ -3,7 +3,7 @@ from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
-data_dir = "cropped/data"
+data_dir = "data07/cropped_data"
 
 # Load training data
 data_dir_train = f"{data_dir}/train/data.npz"
@@ -48,6 +48,7 @@ from repo import model_utils
 
 import wandb
 
+wandb.login(key='ab2505638ca8fabd9114e88f3449ddb51e15a942')
 wandb.init(
     entity="aiotlab",
     project="Cyclone intensity prediction",
