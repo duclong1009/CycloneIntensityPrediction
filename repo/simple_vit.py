@@ -167,21 +167,57 @@ class SimpleViT2(nn.Module):
         return self.linear_head3(x)
     
 
-# breakpoint()
+class SimpleViT3(nn.Module):
+    def __init__(self, *, image_size, patch_size, num_classes, dim, depth, heads, mlp_dim, channels = 3, dim_head = 64):
+        super().__init__()
+        image_height, image_width = pair(image_size)
+        patch_height, patch_width = pair(patch_size)
 
-# v = SimpleViT2(
-#     image_size = 100,
-#     patch_size = 10,
-#     num_classes = 1,
-#     channels=58,
-#     dim = 1024,
-#     depth = 6,
-#     heads = 16,
-#     mlp_dim = 2048
-# )
+        assert image_height % patch_height == 0 and image_width % patch_width == 0, 'Image dimensions must be divisible by the patch size.'
 
-# img = torch.randn(32, 58, 100, 100)
+        patch_dim = channels * patch_height * patch_width
 
-# preds = v(img) # (1, 1000)
+        self.to_patch_embedding = nn.Sequential(
+            Rearrange("b c (h p1) (w p2) -> b (h w) (p1 p2 c)", p1 = patch_height, p2 = patch_width),
+            nn.LayerNorm(patch_dim),
+            nn.Linear(patch_dim, dim),
+            nn.LayerNorm(dim),
+        )
 
-# breakpoint()
+        self.pos_embedding = posemb_sincos_2d(
+            h = image_height // patch_height,
+            w = image_width // patch_width,
+            dim = dim,
+        ) 
+        n_patchs = int(image_size / patch_size)** 2
+        self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
+
+        self.pool = "mean"
+        self.to_latent = nn.Identity()
+
+        self.linear_head1 = nn.Linear(dim * n_patchs, 512)
+        self.linear_head2 = nn.Linear(512, 128)
+        self.linear_head3 = nn.Linear(256, 1)
+        self.linear_center_head = nn.Linear(channels, 128)
+        
+        self.gelu = nn.GELU()
+        
+    def forward(self, img):
+        device = img.device
+        center_infors = img[:,:,51,51]
+        center_infors = self.linear_center_head(center_infors)
+        x = self.to_patch_embedding(img)
+        x += self.pos_embedding.to(device, dtype=x.dtype)
+
+        x = self.transformer(x)
+        x = x.reshape(x.shape[0], -1)
+        
+        # x = x.mean(dim = 1)
+
+        x = self.to_latent(x)
+        
+        x = self.gelu(self.linear_head1(x))
+        x = self.gelu(self.linear_head2(x))
+        x = torch.concat((x, center_infors), -1)
+        return self.linear_head3(x)
+    

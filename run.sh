@@ -24,4 +24,7 @@ python repo/main2.py --model_type simple_cnn  --batch_size 32 --lr 1e-6 --epochs
 
 python repo/main2.py --model_type simple_vit  --batch_size 32 --lr 1e-6 --epochs 100 --patience 10 --data_dir 31_07_data --transform_groundtruth --_use_wandb
 
-python repo/main2.py --model_type simple_vit2  --batch_size 32 --lr 1e-6 --epochs 100 --patience 10 --data_dir 31_07_data --transform_groundtruth --_use_wandb
+python repo/main2.py --model_type simple_vit3  --batch_size 32 --lr 1e-6 --epochs 100 --patience 10 --data_dir data07/cropped_data --transform_groundtruth --_use_wandb
+
+
+repo/main2.py --batch_size 32 --lr 1e-5 --epochs 500 --model_type simple_cnn --_use_wandb --transform_groundtruth --data_dir data07/cropped_data
