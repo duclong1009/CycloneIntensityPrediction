@@ -60,7 +60,3 @@ class PredictionHead(nn.Module):
         x = self.gelu(self.linear_head1(x))
         x = self.gelu(self.linear_head2(x))
         return self.linear_head3(x)
-
-# output_tensor = embedder(input_tensor)
-
-# print(output_tensor.shape)  # Expected output: torch.Size([1, 50, 768])

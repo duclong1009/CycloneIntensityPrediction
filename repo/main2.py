@@ -160,7 +160,7 @@ if __name__ == "__main__":
         cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768, kernel_size=10)
         prediction_head = orca_model.PredictionHead()
         
-        train_model = orca_model.CrossTuningModel(embedder, "vit", prediction_head)
+        train_model = orca_model.CrossTuningModel(cnn_embedder, "vit", prediction_head)
         args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
