@@ -60,14 +60,7 @@ class PredictionHead(nn.Module):
         x = self.gelu(self.linear_head1(x))
         x = self.gelu(self.linear_head2(x))
         return self.linear_head3(x)
-# # Example usage
-input_tensor = torch.randn(1, 58, 100, 100)
-embedder = CNNEmbedder(input_channels=58, output_dim=768, kernel_size=10)
-prediction_head = PredictionHead()
 
-model = CrossTuningModel(embedder, "vit", prediction_head)
-model(input_tensor)
-breakpoint()
 # output_tensor = embedder(input_tensor)
 
 # print(output_tensor.shape)  # Expected output: torch.Size([1, 50, 768])
