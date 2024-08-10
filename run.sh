@@ -28,3 +28,10 @@ python repo/main2.py --model_type simple_vit3  --batch_size 32 --lr 1e-6 --epoch
 
 
 repo/main2.py --batch_size 32 --lr 1e-5 --epochs 500 --model_type simple_cnn --_use_wandb --transform_groundtruth --data_dir data07/cropped_data
+
+
+
+python repo/main2.py --batch_size 32 --lr 1e-5 --epochs 1 --model_type prompt_vit1 --data_dir data07/cropped_data
+
+
+python repo/main2.py --batch_size 32 --lr 1e-5 --epochs 1 --model_type prompt_vit3 --data_dir data07/cropped_data

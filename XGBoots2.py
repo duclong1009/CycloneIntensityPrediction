@@ -20,9 +20,9 @@ y_test = y_test * 0.5
 # Extract the specific slice of the arrays
 
 # breakpoint()
-
-x_train = x_train[:, :, 25:75, 25:75].reshape(x_train.shape[0], x_train.shape[1], -1)
-x_test = x_test[:, :, 25:75, 25:75].reshape(x_test.shape[0], x_test.shape[1], -1)
+xx = 0
+x_train = x_train[:, :, 51- xx: 51 + xx, 51- xx: 51 + xx].reshape(x_train.shape[0], x_train.shape[1], -1)
+x_test = x_test[:, :, 51- xx: 51 + xx, 51- xx: 51 + xx].reshape(x_test.shape[0], x_test.shape[1], -1)
 x_train = np.mean(x_train,2)
 x_test = np.mean(x_test,2)
 
@@ -58,7 +58,7 @@ wandb.init(
     entity="aiotlab",
     project="Cyclone intensity prediction",
     group="Data2",
-    name=f"XGBoots2",
+    name=f"XGBoots2-{xx}",
     config={},
 )
 mae, mse, mape, rmse, r2, corr = model_utils.cal_acc(y_pred, y_test)

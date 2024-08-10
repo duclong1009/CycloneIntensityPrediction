@@ -2,14 +2,14 @@
 import matplotlib.pyplot as plt
 
 import pandas as pd
-df = pd.read_csv("cnn-based.csv")
+df = pd.read_csv("pretrained_VIT.csv")
 
 y_prd = df['Prediction'].values.tolist()
 y_true = df['Ground Truth'].values.tolist()
 
 # Plotting the lines
 plt.figure(figsize=(10, 5))
-plt.plot(y_prd , label='Tracker', linestyle='-', marker='o')
+plt.plot(y_prd , label='Prediction', linestyle='-', marker='o')
 plt.plot(y_true, label='Besttrack', linestyle='-', marker='x')
 
 # Adding titles and labels
@@ -25,4 +25,4 @@ plt.legend()
 
 # Displaying the plot
 plt.show()
-plt.savefig("cnn-based.png")
+plt.savefig("pretrained_VIT.png")

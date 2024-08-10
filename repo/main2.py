@@ -20,7 +20,7 @@ def get_option():
     parser.add_argument("--dim",type=int, default=1024)
     parser.add_argument("--heads",type=int, default=16)
     
-    parser.add_argument("--model_type",  choices=['simple_cnn','cnn','c_attention_cnn','g_attention_cnn','simple_vit','simple_vit2', 'simple_vit3', 'orca_based_e2e'], default= "simple_cnn")
+    parser.add_argument("--model_type", type=str, default= "simple_cnn")
     parser.add_argument("--backbone_name",type=str, default='resnet18')
     parser.add_argument("--radius",type=int, default=30)
     # parser.add_argument("--backbone_name", ty)
@@ -56,6 +56,10 @@ def get_option():
     parser.add_argument("--_use_wandb",action="store_true", default=False)
     # par
     parser.add_argument("--loss_func",type=str, default='mse', choices=['weighted_mse','mse'])
+    
+    
+    ### promt setting
+    parser.add_argument("--prompt_dims",type=int, default=128)
     ###
     # training 
     args = parser.parse_args()
@@ -165,7 +169,60 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    
+    elif args.model_type == "prompt_vit1":
+        import orca_model
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768, kernel_size=10)
         
+        prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
+        
+        train_model = orca_model.Prompt_Tuning_Model1(cnn_embedder, "vit", prediction_head,args.prompt_dims)
+        
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    
+    elif args.model_type == "prompt_vit2":
+        import orca_model
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768, kernel_size=10)
+        
+        prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
+        
+        train_model = orca_model.Prompt_Tuning_Model2(cnn_embedder, "vit", prediction_head,args.prompt_dims)
+        
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        
+    elif args.model_type == "prompt_vit3":
+        import orca_model
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
+        
+        prediction_head = orca_model.PredictionHead()
+        
+        train_model = orca_model.Prompt_Tuning_Model3(cnn_embedder, "vit", prediction_head,args.prompt_dims)
+        
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        
+    elif args.model_type == "prompt_vit4":
+        import orca_model
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
+        
+        prediction_head = orca_model.PredictionHead()
+        
+        train_model = orca_model.Prompt_Tuning_Model4(cnn_embedder, "vit", prediction_head,args.prompt_dims)
+        
+        args.name = (f"{args.model_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        
+           
     # args.name = "test"
     if args._use_wandb:
         wandb.login(key='ab2505638ca8fabd9114e88f3449ddb51e15a942')

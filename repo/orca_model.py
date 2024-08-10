@@ -56,7 +56,147 @@ class PredictionHead(nn.Module):
         self.linear_head3 = nn.Linear(128, 1)
         self.gelu = nn.GELU()
     def forward(self,x):
+        ### adding promt token at the end of body model
         x = x.reshape(x.shape[0], -1)
         x = self.gelu(self.linear_head1(x))
         x = self.gelu(self.linear_head2(x))
         return self.linear_head3(x)
+
+
+
+class Prompt_Tuning_Model1(nn.Module):
+    def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, prompt_dim=128):
+        super(Prompt_Tuning_Model1,self).__init__()
+        
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            
+            self.body_model =  copy.deepcopy(model.encoder)
+        else:
+            raise ValueError("Not correct body model name")
+        self.layernorm = nn.LayerNorm((768+ prompt_dim,), eps=1e-12, elementwise_affine=True)
+        
+        self.cnn_embed = cnn_embed
+        self.prediction_head = prediction_head
+        self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+        
+    def forward(self,x):
+        ### adding promt token at the end of body model
+        batch_size = x.shape[0]
+        prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
+        
+        embedding_x = self.cnn_embed(x)
+        body_output=  self.body_model(embedding_x)
+        body_output = body_output.last_hidden_state
+        
+        body_output = torch.cat([prompt_token_expanded.unsqueeze(1).repeat(1, body_output.size(1), 1), body_output], dim=-1)
+        ### output shape [batch, n_patchs, 768 + 128 ]
+        body_output = self.layernorm(body_output)
+        return self.prediction_head(body_output)
+        
+        
+class Prompt_Tuning_Model2(nn.Module):
+    def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, prompt_dim=128):
+        super(Prompt_Tuning_Model2,self).__init__()
+        
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            
+            self.body_model =  copy.deepcopy(model.encoder)
+        else:
+            raise ValueError("Not correct body model name")
+        self.layernorm = nn.LayerNorm((768 + prompt_dim,), eps=1e-12, elementwise_affine=True)
+        
+        self.cnn_embed = cnn_embed
+        self.prediction_head = prediction_head
+        self.prompt_token = nn.Parameter(torch.randn(1,100, prompt_dim)) 
+        
+    def forward(self,x):
+        ### adding promt token at the end of body model
+        batch_size = x.shape[0]
+        # breakpoint()
+        # prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
+        prompt_token_expanded = self.prompt_token.repeat(batch_size, 1,1)
+        embedding_x = self.cnn_embed(x)
+        body_output=  self.body_model(embedding_x)
+        body_output = body_output.last_hidden_state
+        
+        body_output = torch.cat([prompt_token_expanded, body_output], dim=-1)
+        
+        body_output = self.layernorm(body_output)
+        return self.prediction_head(body_output)
+    
+    
+    
+class Prompt_Tuning_Model3(nn.Module):
+    def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, prompt_dim=128):
+        super(Prompt_Tuning_Model3,self).__init__()
+        
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            
+            self.body_model =  copy.deepcopy(model.encoder)
+        else:
+            raise ValueError("Not correct body model name")
+        self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
+        
+        self.cnn_embed = cnn_embed
+        self.prediction_head = prediction_head
+        self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+        
+    def forward(self,x):
+        ### adding promt token at the begin of body model
+        batch_size = x.shape[0]
+        prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
+        
+        embedding_x = self.cnn_embed(x)
+        # breakpoint()
+        ### add promt token
+        embedding_x = torch.cat([embedding_x, prompt_token_expanded.unsqueeze(1).repeat(1,embedding_x.shape[1],1)], dim=-1)
+        
+        
+        body_output=  self.body_model(embedding_x)
+        body_output = body_output.last_hidden_state
+        
+        # body_output = torch.cat([prompt_token_expanded.unsqueeze(1).repeat(1, body_output.size(1), 1), body_output], dim=-1)
+        
+        body_output = self.layernorm(body_output)
+        # body_output = 
+        return self.prediction_head(body_output)
+    
+class Prompt_Tuning_Model4(nn.Module):
+    def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, prompt_dim=128):
+        super(Prompt_Tuning_Model4,self).__init__()
+        
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            
+            self.body_model =  copy.deepcopy(model.encoder)
+        else:
+            raise ValueError("Not correct body model name")
+        self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
+        
+        self.cnn_embed = cnn_embed
+        self.prediction_head = prediction_head
+        self.prompt_token = nn.Parameter(torch.randn(1,100, prompt_dim)) 
+        
+    def forward(self,x):
+        ### adding promt token at the begin of body model
+        batch_size = x.shape[0]
+        # prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
+        prompt_token_expanded = self.prompt_token.repeat(batch_size, 1,1)
+        
+        embedding_x = self.cnn_embed(x)
+        
+        ### add promt token
+        embedding_x = torch.cat([embedding_x, prompt_token_expanded], dim=-1)
+        
+        
+        body_output=  self.body_model(embedding_x)
+        body_output = body_output.last_hidden_state
+        
+        # body_output = torch.cat([prompt_token_expanded.unsqueeze(1).repeat(1, body_output.size(1), 1), body_output], dim=-1)
+        
+        body_output = self.layernorm(body_output)
+        # body_output = 
+        return self.prediction_head(body_output)
