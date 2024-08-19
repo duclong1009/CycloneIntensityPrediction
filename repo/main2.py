@@ -215,7 +215,7 @@ if __name__ == "__main__":
         import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
         
-        prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
+        prediction_head = orca_model.PredictionHead()
         
         train_model = orca_model.Prompt_Tuning_Model4(cnn_embedder, "vit", prediction_head,args.prompt_dims)
         
@@ -228,7 +228,7 @@ if __name__ == "__main__":
         import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
         
-        prediction_head = orca_model.PredictionHead()
+        prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
         
         train_model = orca_model.Prompt_Tuning_Model5(cnn_embedder, "vit", prediction_head,args.prompt_dims)
         
