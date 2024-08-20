@@ -245,8 +245,6 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-         
-           
     # args.name = "test"
     if args._use_wandb:
         wandb.login(key='ab2505638ca8fabd9114e88f3449ddb51e15a942')
@@ -259,8 +257,6 @@ if __name__ == "__main__":
         )
     
     ### Data loading and Data preprocess
-
-    
     if not os.path.exists(f"output/{args.group_name}/checkpoint/"):
         print(f"Make dir output/{args.group_name}/checkpoint/ ...")
         os.makedirs(f"output/{args.group_name}/checkpoint/")
