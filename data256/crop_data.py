@@ -102,7 +102,7 @@ from tqdm import tqdm
 mode = "test"
 file_path = f"data256/{mode}_index.csv"
 
-for mode in ["train","valid","test"]
+for mode in ["train","valid","test"]:
     dataset = CycloneDataset(file_path=file_path, mode=mode)
     list_x = []
     list_y = []
@@ -116,4 +116,3 @@ for mode in ["train","valid","test"]
     folder_dir = f"data256/cropped_data/{mode}"
     os.makedirs(folder_dir, exist_ok=True)
     np.savez(f"{folder_dir}/data", x_arr=x_arr, groundtruth= y_arr)
-
