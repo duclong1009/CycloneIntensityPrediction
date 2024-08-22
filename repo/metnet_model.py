@@ -61,6 +61,30 @@ class MetNet_Tuning_Model(nn.Module):
         x = self.prediction_head(encoder_output)
         return x
 
+class MetNet_Tuning_Model2(nn.Module):
+    def __init__(self,):
+        super(MetNet_Tuning_Model,self).__init__()
+        
+
+        
+        metnet_model = MetNet().from_pretrained("openclimatefix/metnet")
+
+        self.metnet_encoder = copy.deepcopy(metnet_model.image_encoder)
+        
+        self.prediction_head = nn.Sequential(nn.Linear(1048576, 512),
+                                             nn.GELU(),
+                                             nn.Linear(512, 128),
+                                             nn.GELU(),
+                                             nn.Linear(128, 1))
+        
+    def forward(self, x):
+        x = x.unsqueeze(1)
+        encoder_output = self.metnet_encoder(x)
+        encoder_output = encoder_output.squeeze(1)
+        encoder_output = encoder_output.flatten(1)
+        x = self.prediction_head(encoder_output)
+        
+        return x
 # model = MetNet_Tuning_Model()
 
 # arr = torch.rand((32,58,100,100))

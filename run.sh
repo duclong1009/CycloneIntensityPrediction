@@ -35,3 +35,6 @@ python repo/main2.py --batch_size 32 --lr 1e-5 --epochs 1 --model_type prompt_vi
 
 
 python repo/main2.py --batch_size 32 --lr 1e-5 --epochs 1 --model_type prompt_vit3 --data_dir data07/cropped_data
+
+
+python repo/main2.py --batch_size 32 --lr 1e-5 --epochs 1 --model_type metnet_model2 --data_dir data07/cropped_data

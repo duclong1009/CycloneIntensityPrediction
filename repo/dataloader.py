@@ -242,7 +242,7 @@ class VITDataset(Dataset):
         
         self.mode=  mode
         self.args = args
-
+        self.image_size = args.image_size
     def fit_data(self,arr,y):
     
         arr_shape = arr.shape
@@ -267,7 +267,7 @@ class VITDataset(Dataset):
 
 
     def __getitem__(self,idx):
-        arr = self.x_train[idx][:,:100,:100]
+        arr = self.x_train[idx][:,:self.image_size,:self.image_size]
         
         bt_wp = self.y_train[idx]
         bt_wp = bt_wp * 0.5
