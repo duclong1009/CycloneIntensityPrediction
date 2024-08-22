@@ -361,8 +361,11 @@ class DeepRegressionNN(nn.Module):
         x = self.output(x)
         return x
 
+        
 if __name__ == "__main__":
+    
     x = torch.randn(32, 58, 64, 64)  # Example input tensor with shape (batch_size, num_input_channels, height, width)
     model = FeatureExtractorModel(num_input_channels=58, output_dim=1, backbone_name='resnet18')
     output = model(x)
     print(output.shape)  # Should print torch.Size([32, 1])
+    

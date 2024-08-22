@@ -95,6 +95,36 @@ class Prompt_Tuning_Model1(nn.Module):
         return self.prediction_head(body_output)
         
         
+class Prompt_Tuning_Model1_Embeder(nn.Module):
+    def __init__(self,cnn_embed, body_model_name="vit", prompt_dim=128):
+        super(Prompt_Tuning_Model1_Embeder,self).__init__()
+        
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            
+            self.body_model =  copy.deepcopy(model.encoder)
+        else:
+            raise ValueError("Not correct body model name")
+        self.layernorm = nn.LayerNorm((768+ prompt_dim,), eps=1e-12, elementwise_affine=True)
+        
+        self.cnn_embed = cnn_embed
+        self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+        
+    def forward(self,x):
+        ### adding promt token at the end of body model
+        batch_size = x.shape[0]
+        prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
+        
+        embedding_x = self.cnn_embed(x)
+        body_output=  self.body_model(embedding_x)
+        body_output = body_output.last_hidden_state
+        
+        body_output = torch.cat([prompt_token_expanded.unsqueeze(1).repeat(1, body_output.size(1), 1), body_output], dim=-1)
+        ### output shape [batch, n_patchs, 768 + 128 ]
+        body_output = self.layernorm(body_output)
+        
+        return body_output
+        
 class Prompt_Tuning_Model2(nn.Module):
     def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, prompt_dim=128):
         super(Prompt_Tuning_Model2,self).__init__()

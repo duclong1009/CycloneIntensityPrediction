@@ -116,3 +116,4 @@ for mode in ["test"]:
     folder_dir = f"data256/cropped_data/{mode}"
     os.makedirs(folder_dir, exist_ok=True)
     np.savez(f"{folder_dir}/data", x_arr=x_arr, groundtruth= y_arr)
+    

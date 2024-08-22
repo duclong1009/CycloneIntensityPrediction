@@ -90,6 +90,18 @@ class EarlyStopping:
 from torch.utils.data import DataLoader
 #_use_scheduler_lr
 from torch.optim.lr_scheduler import ReduceLROnPlateau, StepLR
+
+def to_float(x, device):
+    if isinstance(x,list):
+        list_x = []
+        for x_i in x:
+            x_i = x_i.to(device).float()
+            list_x.append(x_i)
+        x = list_x
+    else:
+        x = x.to(device).float()
+        
+    return x
 def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
     model.train()
     model.to(device)
@@ -115,7 +127,7 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
             model.train()
             for data in tqdm(train_dataloader):
                 optimizer.zero_grad()
-                x_train, y_train = data['x'].to(device).float(), data['y'].to(device).float()
+                x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
                 y_ = model(x_train)
                 loss = loss_func(y_.squeeze(), y_train.squeeze())
 
@@ -131,7 +143,7 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
             with torch.no_grad():
                 valid_epoch_loss = []
                 for data in valid_dataloader:
-                    x_train, y_train = data['x'].to(device).float(), data['y'].to(device).float()
+                    x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
                     y_ = model(x_train)
                     loss = loss_func(y_.squeeze(), y_train.squeeze())
                     valid_epoch_loss.append(loss.item())
