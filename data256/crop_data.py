@@ -99,10 +99,8 @@ class CycloneDataset(Dataset):
 
 
 from tqdm import tqdm
-mode = "test"
-file_path = f"data256/{mode}_index.csv"
-
-for mode in ["train","valid","test"]:
+for mode in ["train"]:
+    file_path = f"data256/{mode}_index.csv"
     dataset = CycloneDataset(file_path=file_path, mode=mode)
     list_x = []
     list_y = []
