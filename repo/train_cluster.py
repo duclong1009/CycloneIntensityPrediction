@@ -82,6 +82,17 @@ if __name__ == "__main__":
     # scaler = model_utils.get_scaler()
     ### Init wandb
     
+    args.cluster_index = [[0,1,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32]]
+        
+    list_1d = [item for sublist in args.cluster_index for item in sublist]
+    other_list = []
+    for i in range(58):
+        if i not in list_1d:
+            other_list.append(i)
+    args.cluster_index.append(other_list)
+        
+        
+        
     nwp_scaler, bt_scaler, input_channels = model_utils.get_scaler2(args)
     print(f"Number input channel {input_channels}")
     print("Model", args.model_type)
@@ -96,46 +107,46 @@ if __name__ == "__main__":
         train_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-    
-    elif args.model_type == "prompt_vit1":
+
+    elif args.model_type == "cluster_prompt_vit1":
         import orca_model
-        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768, kernel_size=10)
+        import cluster_model
         
-        prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
+        prediction_head = orca_model.PredictionHead(dim = (768 + args.prompt_dims) * len(args.cluster_index),n_patchs=100)
         
-        train_model = orca_model.Prompt_Tuning_Model1(cnn_embedder, "vit", prediction_head,args.prompt_dims)
+        train_model = cluster_model.MultiHeadModel("prompt_vit1",prediction_head,args)
+        
+        args.name = (f"{args.model_type}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        
+    elif args.model_type == "cluster_prompt_vit2":
+        import orca_model
+        import cluster_model
+        
+        prediction_head = orca_model.PredictionHead(dim = (768 + args.prompt_dims) * len(args.cluster_index),n_patchs=100)
+        
+        train_model = cluster_model.MultiHeadModel("prompt_vit2",prediction_head,args)
         
         args.name = (f"{args.model_type}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
-    elif args.model_type == "prompt_vit2":
+    elif args.model_type == "cluster_prompt_vit3":
         import orca_model
-        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768, kernel_size=10)
+        import cluster_model
         
-        prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
+        prediction_head = orca_model.PredictionHead(dim = 768 * len(args.cluster_index),n_patchs=100)
         
-        train_model = orca_model.Prompt_Tuning_Model2(cnn_embedder, "vit", prediction_head,args.prompt_dims)
+        train_model = cluster_model.MultiHeadModel("prompt_vit3",prediction_head,args)
         
         args.name = (f"{args.model_type}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        
-    elif args.model_type == "prompt_vit3":
-        import orca_model
-        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
-        
-        prediction_head = orca_model.PredictionHead()
-        
-        train_model = orca_model.Prompt_Tuning_Model3(cnn_embedder, "vit", prediction_head,args.prompt_dims)
-        
-        args.name = (f"{args.model_type}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
-        train_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        valid_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        
+
     elif args.model_type == "prompt_vit4":
         import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
@@ -228,7 +239,7 @@ if __name__ == "__main__":
     )
     #### Model trainning 
     
-    device = torch.device("cpu")
+    device = torch.device("cuda:0")
     
     # dataset = dataloader
     list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)

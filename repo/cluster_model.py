@@ -3,8 +3,9 @@ import torch.nn as nn
 import orca_model  # Assuming this module contains the necessary classes
 
 class MultiHeadModel(nn.Module):
-    def __init__(self, prediction_head, args):
+    def __init__(self, model_name ,prediction_head, args):
         super(MultiHeadModel, self).__init__()
+        self.model_name = model_name
         n_clusters = len(args.cluster_index)
         self.cluster_index = args.cluster_index
         self.prediction_head = prediction_head
@@ -13,16 +14,43 @@ class MultiHeadModel(nn.Module):
         self.list_head = nn.ModuleList()
         
         for i in range(n_clusters):
-            cnn_embedder = orca_model.CNNEmbedder(
-                input_channels=len(self.cluster_index[i]), 
-                output_dim=768, 
-                kernel_size=10
-            )
-            train_model = orca_model.Prompt_Tuning_Model1_Embeder(
-                cnn_embedder, 
-                "vit",
-                args.prompt_dims
-            )
+            if model_name == "prompt_vit1":
+                cnn_embedder = orca_model.CNNEmbedder(
+                    input_channels=len(self.cluster_index[i]), 
+                    output_dim=768, 
+                    kernel_size=10
+                )
+                train_model = orca_model.Prompt_Tuning_Model1_Embeder(
+                    cnn_embedder, 
+                    "vit",
+                    args.prompt_dims
+                )
+            elif model_name == "prompt_vit2":
+                cnn_embedder = orca_model.CNNEmbedder(
+                    input_channels=len(self.cluster_index[i]), 
+                    output_dim=768, 
+                    kernel_size=10
+                )
+                train_model = orca_model.Prompt_Tuning_Model2_Embeder(
+                    cnn_embedder, 
+                    "vit",
+                    args.prompt_dims
+                )
+                
+            elif model_name == "prompt_vit3":
+                cnn_embedder = orca_model.CNNEmbedder(
+                    input_channels=len(self.cluster_index[i]), 
+                    output_dim=768 - args.prompt_dims, 
+                    kernel_size=10
+                )
+                train_model = orca_model.Prompt_Tuning_Model3_Embeder(
+                    cnn_embedder, 
+                    "vit",
+                    args.prompt_dims
+                )
+                
+            else:
+                raise("")
             self.list_head.append(train_model)
 
     def forward(self, x):

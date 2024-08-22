@@ -202,7 +202,7 @@ def test_func(model, test_dataloader,criterion , args, besttrack_scaler,device):
     
     with torch.no_grad():
         for data in test_dataloader:
-            x_train, y_grt = data['x'].to(device).float(), data['y'].to(device).float()
+            x_train, y_grt = to_float(data['x'], device), to_float(data['y'],device)
             y_prd = model(x_train)
             batch_loss = criterion(torch.squeeze(y_prd), torch.squeeze(y_grt))
             y_prd = y_prd.cpu().detach().numpy()
