@@ -7,25 +7,48 @@ class SimpleCNN(nn.Module):
     def __init__(self, input_channels, output_channels,args):
         super(SimpleCNN, self).__init__()
         
+        # self.CNN_extract = nn.Sequential(
+        #     nn.Conv2d(input_channels, 32, 3, padding=1),
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(2, 2),
+        #     nn.Conv2d(32, 64, 3, padding=1),
+        #     nn.ReLU(),
+        #     nn.MaxPool2d(2, 2),
+        #     nn.Flatten(),
+            
+        # )
+        
         self.CNN_extract = nn.Sequential(
             nn.Conv2d(input_channels, 32, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
+
             nn.Conv2d(32, 64, 3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(64, 128, 3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(128, 256, 3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
+            nn.Conv2d(256, 512, 3, padding=1),
+            nn.ReLU(),
+            nn.MaxPool2d(2, 2),
+
             nn.Flatten(),
-            
         )
         
-        self.linear1 = nn.Sequential(nn.Linear(40000,128),
+        self.linear1 = nn.Sequential(nn.Linear(4608,128),
             nn.ReLU(),
             nn.Linear(128, 1))
     
     def forward(self,x, loc=None):
         # breakpoint()
         cnn_embedding = self.CNN_extract(x)
-        # breakpoint()
         # cnn_embedding = torch.flatten(cnn_embedding, start_dim=1, end_dim=-1)
         output = self.linear1(cnn_embedding)
         

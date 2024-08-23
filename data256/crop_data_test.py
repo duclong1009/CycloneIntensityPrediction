@@ -96,8 +96,6 @@ class CycloneDataset(Dataset):
     def __len__(self):
         return len(self.map_idx)
         
-
-
 from tqdm import tqdm
 
 
