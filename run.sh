@@ -41,3 +41,6 @@ python repo/main2.py --batch_size 32 --lr 1e-5 --epochs 1 --model_type metnet_mo
 
 
 python repo/main2.py --model_type simple_cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir data07/cropped_data --transform_groundtruth  --group_name metnet_model
+
+
+CUDA_VISIBLE_DEVICES=1 python repo/train_cluster.py --model_type mutlioutput_multihead_prompt1  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir data07/cropped_data --transform_groundtruth  --group_name metnet_model

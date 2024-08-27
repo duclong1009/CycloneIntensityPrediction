@@ -102,6 +102,7 @@ def to_float(x, device):
         x = x.to(device).float()
         
     return x
+
 def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
     model.train()
     model.to(device)
@@ -129,6 +130,75 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
                 optimizer.zero_grad()
                 x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
                 y_ = model(x_train)
+                loss = loss_func(y_.squeeze(), y_train.squeeze())
+
+                loss.backward()
+                optimizer.step()
+
+                epoch_loss.append(loss.item())
+            train_epoch_loss = sum(epoch_loss) / len(epoch_loss)
+            list_train_loss.append(train_epoch_loss)
+
+            valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+            model.eval()
+            with torch.no_grad():
+                valid_epoch_loss = []
+                for data in valid_dataloader:
+                    x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
+                    y_ = model(x_train)
+                    loss = loss_func(y_.squeeze(), y_train.squeeze())
+                    valid_epoch_loss.append(loss.item())
+                valid_epoch_loss = sum(valid_epoch_loss) / len(valid_epoch_loss)
+                list_valid_loss.append(valid_epoch_loss)
+
+            early_stopping(valid_epoch_loss, model)
+
+            # Step the scheduler every epoch
+            if args._use_scheduler_lr:
+                if args.scheduler_type == "steplr":
+                    scheduler.step()
+                elif args.scheduler_type == "reducelronplateau":
+                    scheduler.step(valid_epoch_loss)
+                else:
+                    pass
+
+            print(f"Training epoch {epoch} Train loss: {train_epoch_loss} Valid loss: {valid_epoch_loss}")
+            if args._use_wandb:
+                wandb.log({"loss/train_loss": train_epoch_loss,
+                           "loss/valid_loss": valid_epoch_loss})
+
+    return list_train_loss, list_valid_loss
+
+
+
+def train_multioutput_func(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
+    model.train()
+    model.to(device)
+    print("------Start training")
+
+    list_train_loss = []
+    list_valid_loss = []
+
+    # Initialize the StepLR scheduler
+    if args._use_scheduler_lr:
+        if args.scheduler_type == "steplr":
+            scheduler = StepLR(optimizer, step_size=5, gamma=0.1)  # Adjust step_size and gamma as needed
+        elif args.scheduler_type == 'reducelronplateau':
+            scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+        else:
+            raise ValueError("scheduler")
+        
+    for epoch in range(args.epochs):
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+
+        epoch_loss = []
+        if not early_stopping.early_stop:
+            model.train()
+            for data in tqdm(train_dataloader):
+                optimizer.zero_grad()
+                x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
+                y_, list_output = model.forward_train(x_train)
+                breakpoint()
                 loss = loss_func(y_.squeeze(), y_train.squeeze())
 
                 loss.backward()
