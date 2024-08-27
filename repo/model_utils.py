@@ -198,13 +198,23 @@ def train_multioutput_func(model, train_dataset, valid_dataset, early_stopping, 
                 optimizer.zero_grad()
                 x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
                 y_, list_output = model.forward_train(x_train)
-                breakpoint()
+                
+                
+                
                 loss = loss_func(y_.squeeze(), y_train.squeeze())
-
-                loss.backward()
+                list_loss = []
+                for output_ in list_output:
+                    list_loss.append(loss_func(output_.squeeze(), y_train.squeeze()))
+                    
+                list_loss.append(loss)
+                
+                stacked_tensors = torch.stack(list_loss)
+                mean_loss = torch.mean(stacked_tensors, dim=0)
+                
+                mean_loss.backward()
                 optimizer.step()
 
-                epoch_loss.append(loss.item())
+                epoch_loss.append(mean_loss.item())
             train_epoch_loss = sum(epoch_loss) / len(epoch_loss)
             list_train_loss.append(train_epoch_loss)
 
