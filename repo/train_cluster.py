@@ -170,6 +170,33 @@ if __name__ == "__main__":
         test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
 
 
+    elif args.model_type == "mutlioutput_multihead_prompt1_2stages":
+        train_model = cluster_model.MultiHead_MultiOutput_Model("prompt_vit1",args)
+        
+        args.name = (f"{args.model_type}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        
+    elif args.model_type == "mutlioutput_multihead_prompt2_2stages":   
+        train_model = cluster_model.MultiHead_MultiOutput_Model("prompt_vit2",args)
+        
+        args.name = (f"{args.model_type}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    
+    elif args.model_type == "mutlioutput_multihead_prompt3_2stages":
+        
+        train_model = cluster_model.MultiHead_MultiOutput_Model("prompt_vit3",args)
+        
+        args.name = (f"{args.model_type}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.ClusterDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+
+    
+
     elif args.model_type == "prompt_vit4":
         
         cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
@@ -244,8 +271,13 @@ if __name__ == "__main__":
     
     # dataset = dataloader
     if "mutlioutput" in args.model_type:
-        print("-------------TRAINing wth multi output strategy---------")
-        list_train_loss, list_valid_loss = model_utils.train_multioutput_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
+        
+        if "2stages" in args.model_type:
+            print("-------------TRAINing wth multi output strategy with 2 stages---------")
+            list_train_loss, list_valid_loss = model_utils.train_multioutput_2stage_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
+        else:
+            print("-------------TRAINing wth multi output strategy---------")
+            list_train_loss, list_valid_loss = model_utils.train_multioutput_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
     else:
         list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
     

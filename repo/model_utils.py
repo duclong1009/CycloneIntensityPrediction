@@ -103,6 +103,7 @@ def to_float(x, device):
         
     return x
 
+
 def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
     model.train()
     model.to(device)
@@ -248,6 +249,141 @@ def train_multioutput_func(model, train_dataset, valid_dataset, early_stopping, 
 
     return list_train_loss, list_valid_loss
 
+
+def create_optimizer(model, args):
+    # Collect all parameters from list_embeder and list_head
+    embedder_params = list(model.list_embeder.parameters())
+    head_params = list(model.list_head.parameters())
+
+    # Combine all parameters into a single list
+    all_params = embedder_params + head_params
+
+    # Create an optimizer (e.g., Adam) with all parameters
+    optimizer = torch.optim.Adam(all_params, lr=args.lr, weight_decay=args.l2_coef)
+    
+    return optimizer
+
+def train_multioutput_2stage_func(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
+    model.train()
+    model.to(device)
+    print("------Start training")
+
+    if args._use_scheduler_lr:
+        if args.scheduler_type == "steplr":
+            scheduler = StepLR(optimizer, step_size=5, gamma=0.1)  # Adjust step_size and gamma as needed
+        elif args.scheduler_type == 'reducelronplateau':
+            scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+        else:
+            raise ValueError("scheduler")
+    import copy 
+    
+    
+    early_stopping2 = copy.deepcopy(early_stopping)
+    optimizer2 = create_optimizer(model, args)
+    
+    
+    
+    #Stage 1:
+    list_train_loss = []
+    list_valid_loss = []
+    for epoch in range(args.epochs):
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+
+        epoch_loss = []
+        if not early_stopping.early_stop:
+            model.train()
+            for data in tqdm(train_dataloader):
+                optimizer2.zero_grad()
+                x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
+                list_y = model.forward_stage1(x_train)
+                
+                list_loss = []
+                for y_ in list_y:
+                    loss = loss_func(y_.squeeze(), y_train.squeeze())
+                    list_loss.append(loss)
+                stacked_tensors = torch.stack(list_loss)
+                mean_loss = torch.mean(stacked_tensors, dim=0)
+                mean_loss.backward()
+                optimizer2.step()
+
+                epoch_loss.append(mean_loss.item())
+            train_epoch_loss = sum(epoch_loss) / len(epoch_loss)
+            list_train_loss.append(train_epoch_loss)
+
+            valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+            model.eval()
+            with torch.no_grad():
+                valid_epoch_loss = []
+                for data in valid_dataloader:
+                    x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
+                    y_ = model(x_train)
+                    loss = loss_func(y_.squeeze(), y_train.squeeze())
+                    valid_epoch_loss.append(loss.item())
+                valid_epoch_loss = sum(valid_epoch_loss) / len(valid_epoch_loss)
+                list_valid_loss.append(valid_epoch_loss)
+
+            early_stopping2(valid_epoch_loss, model)
+
+            print(f"Stage1: Training epoch {epoch} Train loss: {train_epoch_loss} Valid loss: {valid_epoch_loss}")
+            if args._use_wandb:
+                wandb.log({"stage1_loss/train_loss": train_epoch_loss,
+                           "stage1_loss/valid_loss": valid_epoch_loss})
+
+    
+    
+    #Stage 2:
+    # Initialize the StepLR scheduler
+    
+    list_train_loss = []
+    list_valid_loss = []
+    for epoch in range(args.epochs):
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+
+        epoch_loss = []
+        if not early_stopping.early_stop:
+            model.train()
+            for data in tqdm(train_dataloader):
+                optimizer.zero_grad()
+                x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
+                y_ = model(x_train)
+                loss = loss_func(y_.squeeze(), y_train.squeeze())
+
+                loss.backward()
+                optimizer.step()
+
+                epoch_loss.append(loss.item())
+            train_epoch_loss = sum(epoch_loss) / len(epoch_loss)
+            list_train_loss.append(train_epoch_loss)
+
+            valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+            model.eval()
+            with torch.no_grad():
+                valid_epoch_loss = []
+                for data in valid_dataloader:
+                    x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
+                    y_ = model(x_train)
+                    loss = loss_func(y_.squeeze(), y_train.squeeze())
+                    valid_epoch_loss.append(loss.item())
+                valid_epoch_loss = sum(valid_epoch_loss) / len(valid_epoch_loss)
+                list_valid_loss.append(valid_epoch_loss)
+
+            early_stopping(valid_epoch_loss, model)
+
+            # Step the scheduler every epoch
+            if args._use_scheduler_lr:
+                if args.scheduler_type == "steplr":
+                    scheduler.step()
+                elif args.scheduler_type == "reducelronplateau":
+                    scheduler.step(valid_epoch_loss)
+                else:
+                    pass
+
+            print(f"Stage2: Training epoch {epoch} Train loss: {train_epoch_loss} Valid loss: {valid_epoch_loss}")
+            if args._use_wandb:
+                wandb.log({"loss/train_loss": train_epoch_loss,
+                           "loss/valid_loss": valid_epoch_loss})
+
+    return list_train_loss, list_valid_loss
 
 import torch
 from tqdm import tqdm

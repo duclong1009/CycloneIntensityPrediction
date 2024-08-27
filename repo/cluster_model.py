@@ -25,6 +25,7 @@ class MultiHeadModel(nn.Module):
                     "vit",
                     args.prompt_dims
                 )
+                
             elif model_name == "prompt_vit2":
                 cnn_embedder = orca_model.CNNEmbedder(
                     input_channels=len(self.cluster_index[i]), 
@@ -148,4 +149,16 @@ class MultiHead_MultiOutput_Model(nn.Module):
             
         final_embedding_output = torch.concat(list_embedding_output,-1) 
         return self.prediction_head(final_embedding_output)  # Add return to output the results
+    
+    def forward_stage1(self, x):
+        list_embedding_output = []
+        list_output = []
+        for i, cluster_x in enumerate(x):
+            embedding_output = self.list_embeder[i](cluster_x)
+            output_i = self.list_head[i](embedding_output)
+            
+            list_embedding_output.append(embedding_output)
+            list_output.append(output_i)
+        return  list_output  # Add return to output the results
+    
     
