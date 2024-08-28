@@ -249,7 +249,7 @@ if __name__ == "__main__":
         patience=args.patience,
         verbose=True,
         delta=args.delta,
-        path=f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt",
+        path=f"output/{args.group_name}/checkpoint/{args.name}.pt",
     )
 
     #### Model initialization
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     
     ### 
     #### Model testing 
-    model_utils.load_model(train_model, f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt")
+    model_utils.load_model(train_model, f"output/{args.group_name}/checkpoint/{args.name}.pt")
     
     if args._use_wandb:
         wandb.run.summary["beet_training_loss"] = early_stopping.best_score

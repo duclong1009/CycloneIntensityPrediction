@@ -290,7 +290,7 @@ def train_multioutput_2stage_func(model, train_dataset, valid_dataset, early_sto
         train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
         epoch_loss = []
-        if not early_stopping.early_stop:
+        if not early_stopping2.early_stop:
             model.train()
             for data in tqdm(train_dataloader):
                 optimizer2.zero_grad()
@@ -323,14 +323,14 @@ def train_multioutput_2stage_func(model, train_dataset, valid_dataset, early_sto
                 list_valid_loss.append(valid_epoch_loss)
 
             early_stopping2(valid_epoch_loss, model)
-
             print(f"Stage1: Training epoch {epoch} Train loss: {train_epoch_loss} Valid loss: {valid_epoch_loss}")
             if args._use_wandb:
                 wandb.log({"stage1_loss/train_loss": train_epoch_loss,
                            "stage1_loss/valid_loss": valid_epoch_loss})
 
-    
-    
+    load_model(model, f"output/{args.group_name}/checkpoint/{args.name}.pt")
+
+
     #Stage 2:
     # Initialize the StepLR scheduler
     
