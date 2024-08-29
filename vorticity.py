@@ -6,9 +6,9 @@ import tqdm
 import numpy as np
 import os 
 import shutil
+# import tqd
 
 saved_data_dir = "data/added_features_data"
-
 
 for folder_name in tqdm.tqdm(os.listdir("data/unzipdata2")):
     file_list = os.listdir(f"data/unzipdata2/{folder_name}/nwp")
