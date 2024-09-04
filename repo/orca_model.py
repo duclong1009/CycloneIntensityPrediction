@@ -436,7 +436,7 @@ class Individual_Embeder_Tuning_Model2(nn.Module):
     
     
 class Individual_Embeder_Tuning_Model3(nn.Module):
-    def __init__(self,input_channels=58, body_model_name="vit", prediction_head,args=None):
+    def __init__(self,input_channels=58, body_model_name="vit", prediction_head=None,args=None):
         super(Individual_Embeder_Tuning_Model3,self).__init__()
         self.prediction_head = prediction_head
         self.list_embeder = nn.ModuleList()
