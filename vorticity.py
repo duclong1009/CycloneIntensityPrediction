@@ -8,13 +8,13 @@ import os
 import shutil
 # import tqd
 
-     = "data/added_features_data"
+saved_data_dir = "data/added_features_data"
 
 for folder_name in tqdm.tqdm(os.listdir("data/unzipdata2")):
     file_list = os.listdir(f"data/unzipdata2/{folder_name}/nwp")
     os.makedirs(f"{saved_data_dir}/{folder_name}/nwp/", exist_ok=True)
+    
     for file_name in file_list:
-        
         
         shutil.copy2(f"data/unzipdata2/{folder_name}/nwp/{file_name}", f"{saved_data_dir}/{folder_name}/nwp/{file_name}")
         ds = xr.open_dataset(f"data/unzipdata2/{folder_name}/nwp/{file_name}").metpy.parse_cf()
