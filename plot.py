@@ -2,7 +2,8 @@
 import matplotlib.pyplot as plt
 
 import pandas as pd
-df = pd.read_csv("pretrained_VIT.csv")
+csv_name = "individual_prompt3"
+df = pd.read_csv(f"{csv_name}.csv")
 
 y_prd = df['Prediction'].values.tolist()
 y_true = df['Ground Truth'].values.tolist()
@@ -25,4 +26,4 @@ plt.legend()
 
 # Displaying the plot
 plt.show()
-plt.savefig("pretrained_VIT.png")
+plt.savefig(f"{csv_name}.png")
