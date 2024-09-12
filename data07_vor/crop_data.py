@@ -91,7 +91,7 @@ class CycloneDataset(Dataset):
         Z = np.expand_dims(nwp_arr['Z'],0)
         terrain = np.expand_dims(nwp_arr['terrain'],0)
        
-        arr = np.concatenate([u10m, v10m, t2m, td2m, ps, pmsl, skt, total_cloud, rain, h, u, v, t, q, w, terrain], axis=0)
+        arr = np.concatenate([u10m, v10m, t2m, td2m, ps, pmsl, skt, total_cloud, rain,vorticity,wind_speed, divergence, h, u, v, t, q, w, terrain], axis=0)
         # [1,1]
         # [0,1,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32]
         # [2,3,4,5,6,]
