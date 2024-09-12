@@ -522,15 +522,20 @@ class Individual_Embeder_Tuning_Model3(nn.Module):
 
 
 class Region_Attention(nn.Module):
-    def __init__(self, input_channels=58, body_model_name="vit", prediction_head=None, prompt_dim=128):
+    def __init__(self, input_channels=58, body_model_name="vit", prediction_head=None, args=None):
         super(Region_Attention,self).__init__()
         
+        prompt_dim = args.prompt_dims
         self.list_embeder = nn.ModuleList()
         self.input_channels = input_channels
+        output_dim = 14
+        self.use_cls_for_region = args.use_cls_for_region
         for i in range(self.input_channels):
-            self.list_embeder.append(CNNEmbedder(input_channels=1, output_dim=14, kernel_size=10))
+            self.list_embeder.append(CNNEmbedder(input_channels=1, output_dim=output_dim, kernel_size=10))
+        if self.use_cls_for_region:
+            self.cls_token = nn.Parameter(torch.randn(self.input_channels, emb_size))
         
-        self.project_layer = nn.Linear(14 * self.input_channels, 768)
+        self.project_layer = nn.Linear(output_dim * self.input_channels, 768)
         # self
 
         if body_model_name == 'vit':
@@ -543,7 +548,11 @@ class Region_Attention(nn.Module):
         
         self.prediction_head = prediction_head
         self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
-        
+
+        encoder_layer = nn.TransformerEncoderLayer(d_model=output_dim, nhead=2,batch_first=True)
+
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
+
     def cnn_embed(self,x):
         list_output = []
         for i in range(self.input_channels):
@@ -557,11 +566,26 @@ class Region_Attention(nn.Module):
         ### adding promt token at the end of body model
         batch_size = x.shape[0]
         prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
-
+        
         list_output = self.cnn_embed(x)
-        output_vec = torch.concat(list_output,-1)
+        
+        stacked_embed = torch.stack(list_output,2)
         breakpoint()
-        embedding_x = self.project_layer(output_vec)
+        if self.use_cls_for_region:
+            self.cls_token = self.cls_token.unsqueeze(0).repeat(batch_size,1,1).unsqueeze(1)
+            stacked_embed = torch.concat([stacked_embed,self.cls_token],1)
+            
+            pass
+        input_size = stacked_embed.shape
+
+        stacked_embed = stacked_embed.reshape(-1, input_size[2], input_size[3])
+        stacked_embed = self.transformer_encoder(stacked_embed)
+
+        stacked_embed = stacked_embed.reshape(input_size)
+        stacked_embed = stacked_embed.reshape(input_size[0], input_size[1], -1)
+        
+        breakpoint()
+        embedding_x = self.project_layer(stacked_embed)
         body_output=  self.body_model(embedding_x)
         body_output = body_output.last_hidden_state
         

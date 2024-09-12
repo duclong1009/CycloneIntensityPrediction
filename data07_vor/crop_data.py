@@ -27,7 +27,7 @@ class CycloneDataset(Dataset):
     def crop_arr(self, arr, lat, lon, radius=25):
 
         # Ensure the input array is of the correct shape
-        assert arr.shape == (58, 481, 481), "Input array must have shape (58, 481, 481)"
+        # assert arr.shape == (58, 481, 481), "Input array must have shape (58, 481, 481)"
         
         # Create an empty array filled with zeros
         cropped_arr = np.zeros((58, radius * 2 + 1, radius * 2 + 1))
