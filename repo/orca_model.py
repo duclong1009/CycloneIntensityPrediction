@@ -550,8 +550,7 @@ class Region_Attention(nn.Module):
             x_i = x[:, i,:,:].unsqueeze(1)
             y_i = self.list_embeder[i](x_i)
             list_output.append(y_i)
-        output_vec = torch.concat(list_output,-1)
-        return output_vec
+        return list_output
     
         
     def forward(self,x):
@@ -559,7 +558,9 @@ class Region_Attention(nn.Module):
         batch_size = x.shape[0]
         prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
 
-        output_vec = self.cnn_embed(x)
+        list_output = self.cnn_embed(x)
+        output_vec = torch.concat(list_output,-1)
+        breakpoint()
         embedding_x = self.project_layer(output_vec)
         body_output=  self.body_model(embedding_x)
         body_output = body_output.last_hidden_state
