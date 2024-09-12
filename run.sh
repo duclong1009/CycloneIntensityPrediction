@@ -54,4 +54,4 @@ python repo/main2.py --model_type region_attention  --batch_size 32 --lr 1e-6 --
 
 #prompt_vit1
 
-python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir data07/cropped_data --transform_groundtruth  --group_name metnet_model --use_position_embedding
+python repo/main2.py --model_type prompt_vit3  --batch_size 2 --lr 1e-6 --epochs 1000 --patience 10 --data_dir data07/cropped_data --transform_groundtruth  --group_name metnet_model --use_cls_for_region --combining_layer_type 2

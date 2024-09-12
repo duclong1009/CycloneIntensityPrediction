@@ -67,6 +67,7 @@ def get_option():
     parser.add_argument("--use_position_embedding", action="store_true", default=False)
 
     parser.add_argument("--use_cls_for_region", action="store_true", default=False)
+    parser.add_argument("--combining_layer_type",type=int, default=0)
     # training 
     args = parser.parse_args()
     return args 
@@ -281,12 +282,19 @@ if __name__ == "__main__":
     
     elif args.model_type == "region_attention":
         import orca_model
-
-        prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
+        if args.use_cls_for_region:
+            if args.combining_layer_type == 1:
+                prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims, n_patchs=101)
+            elif args.combining_layer_type == 2:
+                prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims, n_patchs=100)
+            else:
+                raise("")
+        else:
+            prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
         
         train_model = orca_model.Region_Attention(58, "vit", prediction_head, args)
         
-        args.name = (f"{args.model_type}-RCls_{args.use_cls_for_region}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        args.name = (f"{args.model_type}-RCls_{args.use_cls_for_region}-CT_{args.combining_layer_type}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
