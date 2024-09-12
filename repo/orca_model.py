@@ -533,7 +533,7 @@ class Region_Attention(nn.Module):
         for i in range(self.input_channels):
             self.list_embeder.append(CNNEmbedder(input_channels=1, output_dim=output_dim, kernel_size=10))
         if self.use_cls_for_region:
-            self.cls_token = nn.Parameter(torch.randn(self.input_channels, emb_size))
+            self.cls_token = nn.Parameter(torch.randn(self.input_channels, output_dim))
         
         self.project_layer = nn.Linear(output_dim * self.input_channels, 768)
         # self
@@ -570,11 +570,10 @@ class Region_Attention(nn.Module):
         list_output = self.cnn_embed(x)
         
         stacked_embed = torch.stack(list_output,2)
-        breakpoint()
         if self.use_cls_for_region:
             self.cls_token = self.cls_token.unsqueeze(0).repeat(batch_size,1,1).unsqueeze(1)
             stacked_embed = torch.concat([stacked_embed,self.cls_token],1)
-            
+
             pass
         input_size = stacked_embed.shape
 

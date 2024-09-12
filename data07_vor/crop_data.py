@@ -30,7 +30,7 @@ class CycloneDataset(Dataset):
         # assert arr.shape == (58, 481, 481), "Input array must have shape (58, 481, 481)"
         
         # Create an empty array filled with zeros
-        cropped_arr = np.zeros((58, radius * 2 + 1, radius * 2 + 1))
+        cropped_arr = np.zeros((82, radius * 2 + 1, radius * 2 + 1))
         
         # Calculate the start and end indices for the input array
         lat_start = max(lat - radius, 0)
