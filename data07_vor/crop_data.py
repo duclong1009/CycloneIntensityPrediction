@@ -111,12 +111,13 @@ class CycloneDataset(Dataset):
 
 from tqdm import tqdm
 
-file_path = f"data07_vor/{mode}_index.csv"
 
-dataset = CycloneDataset(file_path=file_path, mode=mode)
-list_x = []
-list_y = []
 for mode in ["train","valid","test"]:
+    file_path = f"data07_vor/{mode}_index.csv"
+
+    dataset = CycloneDataset(file_path=file_path, mode=mode)
+    list_x = []
+    list_y = []
     for data in tqdm(dataset):
         list_x.append(data['x'])
         list_y.append(data['y'])
