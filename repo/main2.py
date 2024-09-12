@@ -357,7 +357,7 @@ if __name__ == "__main__":
     )
     #### Model trainning 
     
-    device = torch.device("cpu")
+    device = torch.device("cuda:0")
     # dataset = dataloader
     list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
     
