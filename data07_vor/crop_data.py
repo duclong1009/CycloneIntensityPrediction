@@ -114,20 +114,23 @@ from tqdm import tqdm
 
 for mode in ["train","valid","test"]:
     file_path = f"data07_vor/{mode}_index.csv"
+    try:
+        dataset = CycloneDataset(file_path=file_path, mode=mode)
+        list_x = []
+        list_y = []
+        for data in tqdm(dataset):
+            list_x.append(data['x'])
+            list_y.append(data['y'])
 
-    dataset = CycloneDataset(file_path=file_path, mode=mode)
-    list_x = []
-    list_y = []
-    for data in tqdm(dataset):
-        list_x.append(data['x'])
-        list_y.append(data['y'])
+        x_arr = np.stack(list_x,0)
+        y_arr = np.stack(list_y,0)
 
-    x_arr = np.stack(list_x,0)
-    y_arr = np.stack(list_y,0)
+        print(x_arr.shape)
 
-    print(x_arr.shape)
-
-    folder_dir = f"data07_vor/cropped_data/{mode}"
-    os.makedirs(folder_dir, exist_ok=True)
-    np.savez(f"{folder_dir}/data", x_arr=x_arr, groundtruth= y_arr)
-    print(f"Done mode {mode}")
+        folder_dir = f"data07_vor/cropped_data/{mode}"
+        os.makedirs(folder_dir, exist_ok=True)
+        np.savez(f"{folder_dir}/data", x_arr=x_arr, groundtruth= y_arr)
+        print(f"Done mode {mode}")
+    except:
+        pass
+        
