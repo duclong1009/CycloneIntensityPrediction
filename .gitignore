@@ -24,3 +24,4 @@ wandb/
 data.zip
 
 data_tracker_loc
+.ssh/
