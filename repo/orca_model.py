@@ -537,10 +537,10 @@ class Region_Attention(nn.Module):
         if self.use_cls_for_region:
             self.cls_token = nn.Parameter(torch.randn(self.input_channels, output_dim))
             
-        if self.use_cls_for_region and args.combining_layer_type ==2: 
+        if self.use_cls_for_region and self.combining_layer_type ==2: 
             self.project_layer = nn.Linear(output_dim, 768)
 
-        elif self.use_cls_for_region and args.combining_layer_type ==1: 
+        elif self.use_cls_for_region and self.combining_layer_type ==1: 
             self.project_layer = nn.Linear(output_dim * (self.input_channels+1), 768)
 
         else:
@@ -589,7 +589,7 @@ class Region_Attention(nn.Module):
         stacked_embed = stacked_embed.reshape(-1, input_size[2], input_size[3])
         stacked_embed = self.transformer_encoder(stacked_embed)
         stacked_embed = stacked_embed.reshape(input_size)
-        if self.use_cls_for_region and args.combining_layer_type == 2:
+        if self.use_cls_for_region and self.combining_layer_type == 2:
             stacked_embed = stacked_embed[:, :,0,:]
         else:
             stacked_embed = stacked_embed.reshape(input_size[0], input_size[1], -1)
