@@ -132,5 +132,5 @@ for mode in ["train","valid","test"]:
         np.savez(f"{folder_dir}/data", x_arr=x_arr, groundtruth= y_arr)
         print(f"Done mode {mode}")
     except:
+        print("")
         pass
-        
