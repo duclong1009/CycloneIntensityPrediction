@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn 
 import wandb
 import os
+
 def get_option():
     parser = argparse.ArgumentParser()
     
@@ -283,7 +284,7 @@ if __name__ == "__main__":
         import orca_model
         if args.use_cls_for_region:
             if args.combining_layer_type == 1:
-                prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims, n_patchs=101)
+                prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims, n_patchs=100)
             elif args.combining_layer_type == 2:
                 prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims, n_patchs=100)
             else:
@@ -298,7 +299,7 @@ if __name__ == "__main__":
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
-    
+
 
     elif args.model_type == "metnet_model":
         import metnet_model

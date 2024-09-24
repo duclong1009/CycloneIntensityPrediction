@@ -519,8 +519,6 @@ class Individual_Embeder_Tuning_Model3(nn.Module):
         # body_output = 
         return self.prediction_head(body_output)
 
-
-
 class Region_Attention(nn.Module):
     def __init__(self, input_channels=58, body_model_name="vit", prediction_head=None, args=None):
         super(Region_Attention,self).__init__()
@@ -532,18 +530,22 @@ class Region_Attention(nn.Module):
         self.input_channels = input_channels
         output_dim = 14
         self.use_cls_for_region = args.use_cls_for_region
+        
         for i in range(self.input_channels):
             self.list_embeder.append(CNNEmbedder(input_channels=1, output_dim=output_dim, kernel_size=10))
-        if self.use_cls_for_region:
-            self.cls_token = nn.Parameter(torch.randn(self.input_channels, output_dim))
             
-        if self.use_cls_for_region and self.combining_layer_type ==2: 
+        if self.use_cls_for_region:
+            self.cls_token = nn.Parameter(torch.randn(100 , output_dim))
+            
+        if self.use_cls_for_region and self.combining_layer_type == 2: 
+            print("USe cls combing_type 2")
             self.project_layer = nn.Linear(output_dim, 768)
 
-        elif self.use_cls_for_region and self.combining_layer_type ==1: 
+        elif self.use_cls_for_region and self.combining_layer_type == 1: 
+            print("USe cls combing_type 1")
             self.project_layer = nn.Linear(output_dim * (self.input_channels+1), 768)
-
         else:
+            print("Not use cls combing_type 2")
             self.project_layer = nn.Linear(output_dim * self.input_channels, 768)
         # self
 
@@ -553,6 +555,7 @@ class Region_Attention(nn.Module):
             self.body_model =  copy.deepcopy(model.encoder)
         else:
             raise ValueError("Not correct body model name")
+        
         self.layernorm = nn.LayerNorm((768 + prompt_dim,), eps=1e-12, elementwise_affine=True)
         
         self.prediction_head = prediction_head
@@ -576,12 +579,13 @@ class Region_Attention(nn.Module):
         batch_size = x.shape[0]
         prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
         
-        list_output = self.cnn_embed(x)
+        list_output = self.cnn_embed(x) 
         
-        stacked_embed = torch.stack(list_output,2)
+        stacked_embed = torch.stack(list_output,2)  ## batch_size, 100, n_fts, embed_dims 
+        
         if self.use_cls_for_region:
-            self.cls_token = nn.Parameter(self.cls_token.unsqueeze(0).repeat(batch_size,1,1).unsqueeze(1))
-            stacked_embed = torch.concat([stacked_embed,self.cls_token],1)
+            self.cls_token = nn.Parameter(self.cls_token.unsqueeze(0).repeat(batch_size,1,1).unsqueeze(2))
+            stacked_embed = torch.concat([stacked_embed,self.cls_token],2)
 
             
         input_size = stacked_embed.shape
@@ -589,11 +593,99 @@ class Region_Attention(nn.Module):
         stacked_embed = stacked_embed.reshape(-1, input_size[2], input_size[3])
         stacked_embed = self.transformer_encoder(stacked_embed)
         stacked_embed = stacked_embed.reshape(input_size)
-        if self.use_cls_for_region and self.combining_layer_type == 2:
+        if self.use_cls_for_region and self.combining_layer_type == 2: # lay token cls
             stacked_embed = stacked_embed[:, :,0,:]
         else:
             stacked_embed = stacked_embed.reshape(input_size[0], input_size[1], -1)
+        breakpoint()
+        embedding_x = self.project_layer(stacked_embed)
+        body_output=  self.body_model(embedding_x)
+        body_output = body_output.last_hidden_state
+        
+        body_output = torch.cat([prompt_token_expanded.unsqueeze(1).repeat(1, body_output.size(1), 1), body_output], dim=-1)
+        ### output shape [batch, n_patchs, 768 + 128 ]
+        body_output = self.layernorm(body_output)
+        
+        return self.prediction_head(body_output)
 
+
+class Region_Attention3(nn.Module):
+    def __init__(self, input_channels=58, body_model_name="vit", prediction_head=None, args=None):
+        super(Region_Attention3,self).__init__()
+        
+        prompt_dim = args.prompt_dims
+        self.combining_layer_type = args.combining_layer_type
+
+        self.list_embeder = nn.ModuleList()
+        self.input_channels = input_channels
+        output_dim = 14
+        self.use_cls_for_region = args.use_cls_for_region
+        
+        for i in range(self.input_channels):
+            self.list_embeder.append(CNNEmbedder(input_channels=1, output_dim=output_dim, kernel_size=10))
+            
+        if self.use_cls_for_region:
+            self.cls_token = nn.Parameter(torch.randn(100 , output_dim))
+            
+        if self.use_cls_for_region and self.combining_layer_type == 2: 
+            print("USe cls combing_type 2")
+            self.project_layer = nn.Linear(output_dim, 768)
+
+        elif self.use_cls_for_region and self.combining_layer_type == 1: 
+            print("USe cls combing_type 1")
+            self.project_layer = nn.Linear(output_dim * (self.input_channels+1), 768)
+        else:
+            print("Not use cls combing_type 2")
+            self.project_layer = nn.Linear(output_dim * self.input_channels, 768)
+        # self
+
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            
+            self.body_model =  copy.deepcopy(model.encoder)
+        else:
+            raise ValueError("Not correct body model name")
+        
+        self.layernorm = nn.LayerNorm((768 + prompt_dim,), eps=1e-12, elementwise_affine=True)
+        
+        self.prediction_head = prediction_head
+        self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+
+        encoder_layer = nn.TransformerEncoderLayer(d_model=output_dim, nhead=2,batch_first=True)
+
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
+
+    def cnn_embed(self,x):
+        list_output = []
+        for i in range(self.input_channels):
+            x_i = x[:, i,:,:].unsqueeze(1)
+            y_i = self.list_embeder[i](x_i)
+            list_output.append(y_i)
+        return list_output
+    
+        
+    def forward(self,x):
+        ### adding promt token at the end of body model
+        batch_size = x.shape[0]
+        prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
+        
+        list_output = self.cnn_embed(x) 
+        
+        stacked_embed = torch.stack(list_output,2)  ## batch_size, 100, n_fts, embed_dims 
+        
+        if self.use_cls_for_region:
+            self.cls_token = nn.Parameter(self.cls_token.unsqueeze(0).repeat(batch_size,1,1).unsqueeze(2))
+            stacked_embed = torch.concat([stacked_embed,self.cls_token],2)
+
+        input_size = stacked_embed.shape
+        stacked_embed = stacked_embed.reshape(-1, input_size[2], input_size[3])
+        stacked_embed = self.transformer_encoder(stacked_embed)
+        stacked_embed = stacked_embed.reshape(input_size)
+        if self.use_cls_for_region and self.combining_layer_type == 2: # lay token cls
+            stacked_embed = stacked_embed[:, :,0,:]
+        else:
+            stacked_embed = stacked_embed.reshape(input_size[0], input_size[1], -1)
+        breakpoint()
         embedding_x = self.project_layer(stacked_embed)
         body_output=  self.body_model(embedding_x)
         body_output = body_output.last_hidden_state
