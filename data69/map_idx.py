@@ -41,7 +41,4 @@ for folder_name in list_folder:
             else:
                 pass
 
-pd.DataFrame(list_results, columns=['besttrack_path', "besttrack_id", "nwp_path","nwp_id"]).to_csv("file_index6_9.csv")
-
-
-# breakpoint()
+pd.DataFrame(list_results, columns=['besttrack_path', "besttrack_id", "nwp_path","nwp_id"]).to_csv("data69/file_index69.csv")
