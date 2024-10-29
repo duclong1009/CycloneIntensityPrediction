@@ -67,7 +67,7 @@ for folder_name in tqdm.tqdm(os.listdir("data/unzipdata2")):
             uwnd_level = ds['u'].metpy.sel(vertical=level).squeeze()
             vwnd_level = ds['v'].metpy.sel(vertical=level).squeeze()
             dx, dy = mpcalc.lat_lon_grid_deltas(lons, lats)
-            
+            breakpoint()
 
             avor_level = mpcalc.absolute_vorticity(uwnd_level, vwnd_level)
             speed_level = mpcalc.wind_speed(uwnd_level, vwnd_level)
@@ -80,5 +80,5 @@ for folder_name in tqdm.tqdm(os.listdir("data/unzipdata2")):
         wind_speed = np.stack(list_speed,1)
         divergence = np.stack(list_div,1)
 
-        os.makedirs(f"{saved_data_dir}/{folder_name}/arr", exist_ok=True)
-        np.savez(f"{saved_data_dir}/{folder_name}/arr/{file_name.split('.')[0]}.npz",lon=lons, lat=lats, lev_soil=lev, u10m=u10m, v10m=v10m, t2m = t2m, td2m=td2m, ps=ps, total_cloud=total_cloud, h=h,u=u, v=v, t=t, q=q, w=w, Albedo=Albedo, Z=Z, terrain=terrain, time_strings=time_strings, skt=skt, rain=rain, pmsl=pmsl, vorticity=vorticity, wind_speed=wind_speed, divergence=divergence)
+        # os.makedirs(f"{saved_data_dir}/{folder_name}/arr", exist_ok=True)
+        # np.savez(f"{saved_data_dir}/{folder_name}/arr/{file_name.split('.')[0]}.npz",lon=lons, lat=lats, lev_soil=lev, u10m=u10m, v10m=v10m, t2m = t2m, td2m=td2m, ps=ps, total_cloud=total_cloud, h=h,u=u, v=v, t=t, q=q, w=w, Albedo=Albedo, Z=Z, terrain=terrain, time_strings=time_strings, skt=skt, rain=rain, pmsl=pmsl, vorticity=vorticity, wind_speed=wind_speed, divergence=divergence)
