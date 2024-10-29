@@ -2,8 +2,27 @@ import numpy as np
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
+import random
+import torch
+import os
 
-data_dir = "data07/cropped_data"
+seed = 10
+def seed_everything(seed: int):
+
+    random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
+
+seed_everything(seed)
+
+# data_dir = "data69/cropped_data"
+data_dir = "cropped_data"
+
+
 
 # Load training data
 data_dir_train = f"{data_dir}/train/data.npz"
@@ -34,7 +53,7 @@ x_test_scaled = scaler.transform(x_test_reshaped)
 
 # Initialize and train the model
 model = XGBRegressor(objective='reg:squarederror', colsample_bytree=0.3, learning_rate=0.1,
-                     max_depth=5, alpha=10, n_estimators=100)
+                     max_depth=5, alpha=10, n_estimators=100, seed= seed)
 
 model.fit(x_train_scaled, y_train)
 
@@ -53,7 +72,7 @@ wandb.init(
     entity="aiotlab",
     project="Cyclone intensity prediction",
     group="Data2",
-    name=f"XGBoots",
+    name=f"XGBoots_seed-{seed}",
     config={},
 )
 mae, mse, mape, rmse, r2, corr = model_utils.cal_acc(y_pred, y_test)
@@ -79,6 +98,7 @@ plt.grid(True)
 # Log the plot to W&B
 wandb.log({"predictions_vs_groundtruths_plot": wandb.Image(plt)})
 plt.close()
+
 
 # Finish the W&B run
 wandb.finish()

@@ -25,7 +25,7 @@ def save_checkpoint(model, path):
 
 
 def load_model(model, checkpoint_path):
-    model.load_state_dict(torch.load(checkpoint_path)["model_dict"])
+    model.load_state_dict(torch.load(checkpoint_path, map_location=torch.device('cpu'))["model_dict"])
 
 
 
@@ -53,7 +53,7 @@ class EarlyStopping:
         self.counter = 0
         self.best_score = None
         self.early_stop = False
-        self.val_loss_min = np.Inf
+        self.val_loss_min = np.inf
         self.delta = delta
         self.path = path
         self.trace_func = trace_func

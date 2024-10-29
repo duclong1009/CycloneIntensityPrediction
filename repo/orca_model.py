@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from transformers import AutoImageProcessor, ViTModel
 import copy
+from transformers import ViTModel, ViTConfig
 
 class CNNEmbedder(nn.Module):
     def __init__(self, input_channels, output_dim, kernel_size=3):
@@ -74,6 +75,11 @@ class Prompt_Tuning_Model1(nn.Module):
         if body_model_name == 'vit':
             model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
             self.body_model =  copy.deepcopy(model.encoder)
+        elif body_model_name == 'scratch_vit':
+            config = ViTConfig()  # Use default configuration or modify as needed   
+            model = ViTModel(config)
+            self.body_model =  copy.deepcopy(model.encoder)
+
         else:
             raise ValueError("Not correct body model name")
 
@@ -145,8 +151,13 @@ class Prompt_Tuning_Model2(nn.Module):
 
         if body_model_name == 'vit':
             model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
-            
             self.body_model =  copy.deepcopy(model.encoder)
+
+        elif body_model_name == 'scratch_vit':
+            config = ViTConfig()  # Use default configuration or modify as needed   
+            model = ViTModel(config)
+            self.body_model =  copy.deepcopy(model.encoder)
+
         else:
             raise ValueError("Not correct body model name")
         self.layernorm = nn.LayerNorm((768 + prompt_dim,), eps=1e-12, elementwise_affine=True)
@@ -167,6 +178,7 @@ class Prompt_Tuning_Model2(nn.Module):
 
     def forward(self,x):
         ### adding promt token at the end of body model
+        # breakpoint()
         batch_size = x.shape[0]
         # breakpoint()
         # prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
@@ -221,8 +233,13 @@ class Prompt_Tuning_Model3(nn.Module):
         prompt_dim = args.prompt_dims
         if body_model_name == 'vit':
             model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
-            
             self.body_model =  copy.deepcopy(model.encoder)
+
+        elif body_model_name == 'scratch_vit':
+            config = ViTConfig()  # Use default configuration or modify as needed   
+            model = ViTModel(config)
+            self.body_model =  copy.deepcopy(model.encoder)
+
         else:
             raise ValueError("Not correct body model name")
         self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
@@ -239,10 +256,11 @@ class Prompt_Tuning_Model3(nn.Module):
 
     def forward(self,x):
         ### adding promt token at the begin of body model
+        # breakpoint()
         batch_size = x.shape[0]
         prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
         
-        embedding_x = self.cnn_embed(x)
+        embedding_x = self.cnn_embed(x) # 100 640
         # breakpoint()
         ### add promt token
         embedding_x = torch.cat([embedding_x, prompt_token_expanded.unsqueeze(1).repeat(1,embedding_x.shape[1],1)], dim=-1)

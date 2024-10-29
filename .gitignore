@@ -25,3 +25,14 @@ data.zip
 
 data_tracker_loc
 .ssh/
+**.sh
+**.csv
+data07_vor/
+data69/
+.ipynb_checkpoints/
+**.npy
+**.txt
+raw_data/
+data256/
+slurm-3637.out
+cropped_data_vor/
