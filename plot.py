@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 
 import pandas as pd
-csv_name = "individual_prompt3"
+csv_name = "prompt_vit2"
 df = pd.read_csv(f"{csv_name}.csv")
 
 y_prd = df['Prediction'].values.tolist()

@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn 
 import wandb
 import os
+
 def get_option():
     parser = argparse.ArgumentParser()
     
@@ -54,6 +55,7 @@ def get_option():
     ### Wandb
     parser.add_argument("--group_name",type=str, default='test_group')
     parser.add_argument("--_use_wandb",action="store_true", default=False)
+    parser.add_argument("--debug",action="store_true", default=False)
     # par
     parser.add_argument("--loss_func",type=str, default='mse', choices=['weighted_mse','mse'])
     
@@ -69,6 +71,9 @@ def get_option():
     parser.add_argument("--use_cls_for_region", action="store_true", default=False)
     parser.add_argument("--combining_layer_type",type=int, default=0)
     # training 
+    parser.add_argument("--body_model_name", type=str, default="vit")
+    
+    # parser.add_argument("--input_channels",type=int, default=58)
     args = parser.parse_args()
     return args 
 
@@ -177,13 +182,27 @@ if __name__ == "__main__":
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
+    elif args.model_type == "prompt_vit0":
+        import orca_model
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=input_channels, output_dim=768, kernel_size=10)
+        
+        prediction_head = orca_model.PredictionHead(dim = 768)
+        
+        train_model = orca_model.Prompt_Tuning_Model0(cnn_embedder, args.body_model_name, prediction_head,args)
+        
+        args.name = (f"{args.model_type}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    
+    
     elif args.model_type == "prompt_vit1":
         import orca_model
-        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768, kernel_size=10)
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=input_channels, output_dim=768, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
         
-        train_model = orca_model.Prompt_Tuning_Model1(cnn_embedder, "vit", prediction_head,args)
+        train_model = orca_model.Prompt_Tuning_Model1(cnn_embedder, args.body_model_name, prediction_head,args)
         
         args.name = (f"{args.model_type}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
@@ -192,11 +211,11 @@ if __name__ == "__main__":
     
     elif args.model_type == "prompt_vit2":
         import orca_model
-        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768, kernel_size=10)
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=input_channels, output_dim=768, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
         
-        train_model = orca_model.Prompt_Tuning_Model2(cnn_embedder, "vit", prediction_head,args)
+        train_model = orca_model.Prompt_Tuning_Model2(cnn_embedder, args.body_model_name, prediction_head,args)
         
         args.name = (f"{args.model_type}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
@@ -205,11 +224,11 @@ if __name__ == "__main__":
         
     elif args.model_type == "prompt_vit3":
         import orca_model
-        cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=input_channels, output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead()
         
-        train_model = orca_model.Prompt_Tuning_Model3(cnn_embedder, "vit", prediction_head,args)
+        train_model = orca_model.Prompt_Tuning_Model3(cnn_embedder, args.body_model_name, prediction_head,args)
         
         args.name = (f"{args.model_type}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
@@ -357,7 +376,14 @@ if __name__ == "__main__":
     )
     #### Model trainning 
     
-    device = torch.device("cuda:0")
+    # device = torch.device("cuda:0")
+    if args.debug:
+        print("Using CPU")
+        device = torch.device("cpu")
+    else:
+        print("Using GPU")
+        device = torch.device("cuda:0")
+    
     # dataset = dataloader
     list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
     
