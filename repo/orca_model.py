@@ -128,6 +128,10 @@ class Prompt_Tuning_Model1(nn.Module):
         else:
             raise ValueError("Not correct body model name")
 
+        if args.freeze:
+            for param in self.body_model:
+                param.requires_grad = False
+                
         self.layernorm = nn.LayerNorm((768+ prompt_dim,), eps=1e-12, elementwise_affine=True)
         
         
