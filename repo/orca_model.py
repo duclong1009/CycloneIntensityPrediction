@@ -157,7 +157,6 @@ class Prompt_Tuning_Model1(nn.Module):
         body_output = self.layernorm(body_output)
         return self.prediction_head(body_output)
         
-        
 class Prompt_Tuning_Model1_Embeder(nn.Module):
     def __init__(self,cnn_embed, body_model_name="vit", prompt_dim=128):
         super(Prompt_Tuning_Model1_Embeder,self).__init__()

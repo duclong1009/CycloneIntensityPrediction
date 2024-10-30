@@ -72,6 +72,8 @@ def get_option():
     parser.add_argument("--combining_layer_type",type=int, default=0)
     # training 
     parser.add_argument("--body_model_name", type=str, default="vit")
+    parser.add_argument("--freeze", action="store_true", default=False)
+    
     
     # parser.add_argument("--input_channels",type=int, default=58)
     args = parser.parse_args()
@@ -432,3 +434,4 @@ if __name__ == "__main__":
 
     # Finish the W&B run
     wandb.finish()
+    
