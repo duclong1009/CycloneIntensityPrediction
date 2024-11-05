@@ -8,6 +8,7 @@ import torch.nn as nn
 import wandb
 import os
 
+
 def get_option():
     parser = argparse.ArgumentParser()
     
@@ -55,7 +56,6 @@ def get_option():
     ### Wandb
     parser.add_argument("--group_name",type=str, default='test_group')
     parser.add_argument("--_use_wandb",action="store_true", default=False)
-    parser.add_argument("--debug",action="store_true", default=False)
     # par
     parser.add_argument("--loss_func",type=str, default='mse', choices=['weighted_mse','mse'])
     
@@ -72,15 +72,12 @@ def get_option():
     parser.add_argument("--combining_layer_type",type=int, default=0)
     # training 
     parser.add_argument("--body_model_name", type=str, default="vit")
-    parser.add_argument("--freeze", action="store_true", default=False)
-    
-    
-    # parser.add_argument("--input_channels",type=int, default=58)
+    parser.add_argument("--freeze",action='store_true', default=False)
+    # 
     args = parser.parse_args()
     return args 
 
 if __name__ == "__main__":
-    
     args = get_option()
     
     try:
@@ -88,14 +85,13 @@ if __name__ == "__main__":
     except IOError as msg:
         args.error(str(msg))
 
+    # breakpoint()
+    import orca_model
     model_utils.seed_everything(args.seed)
-    # scaler = model_utils.get_scaler()
-    ### Init wandb
-    
+
     nwp_scaler, bt_scaler, input_channels = model_utils.get_scaler2(args)
     print(f"Number input channel {input_channels}")
     print("Model", args.model_type)
-    
 
     
     if  args.model_type == 'simple_cnn':
@@ -338,33 +334,42 @@ if __name__ == "__main__":
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
-    # args.name = "test"
+
+    args.name = (f"{args.model_type}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+    train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        
+
+    model_utils.seed_everything(args.seed)
+    # scaler = model_utils.get_scaler()
+    ### Init wandb
+    
+    # nwp_scaler, bt_scaler, input_channels = model_utils.get_scaler2(args)
+    # print(f"Number input channel {input_channels}")
+    # print("Model", args.model_type)
+
     if args._use_wandb:
         wandb.login(key='ab2505638ca8fabd9114e88f3449ddb51e15a942')
         wandb.init(
             entity="aiotlab",
             project="Cyclone intensity prediction",
-            group=args.group_name,
+            group=f"test_only-{args.group_name}",
             name=f"{args.name}",
             config=config,
         )
+    device = torch.device("cpu")
+    train_model = train_model.to(device)
+    model_path = "output/prompt_vit3_seed79_rm_0/checkpoint/stdgi_prompt_vit3-pse_False-SLr_False_steplr-loss_func_mse-resnet18__79_32-lr_0.0005-tf_gr_False-ps_10-dim_1024-head_16.pt"
+    model_utils.load_model(train_model,model_path)
+    sample1 = test_dataset[0]
+    x_train, y_grt = model_utils.to_float(torch.tensor(sample1['x']).unsqueeze(0), device), model_utils.to_float(torch.tensor(sample1['y']).unsqueeze(0),device)
+    y_prd = train_model(x_train)
+
     
-    ### Data loading and Data preprocess
-    if not os.path.exists(f"output/{args.group_name}/checkpoint/"):
-        print(f"Make dir output/{args.group_name}/checkpoint/ ...")
-        os.makedirs(f"output/{args.group_name}/checkpoint/")
-
-    ## Initialize early stopping
-    early_stopping = model_utils.EarlyStopping(
-        patience=args.patience,
-        verbose=True,
-        delta=args.delta,
-        path=f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt",
-    )
-
-    #### Model initialization
-    ### dataset
-    ### loss & optimizer
+    
+    test_dataloader=  DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    
     if args.loss_func == "mse":
         loss_func = nn.MSELoss()
     elif args.loss_func == "weighted_mse":
@@ -372,34 +377,6 @@ if __name__ == "__main__":
         loss_func = loss.WeightedMSELoss()
     else:
         raise("Not correct loss function!")
-    trainable_params = filter(lambda p: p.requires_grad, train_model.parameters())
-    optimizer = torch.optim.Adam(
-        trainable_params, lr=args.lr, weight_decay=args.l2_coef
-    )
-    #### Model trainning 
-    
-    # device = torch.device("cuda:0")
-    if args.debug:
-        print("Using CPU")
-        device = torch.device("cpu")
-    else:
-        print("Using GPU")
-        device = torch.device("cuda:0")
-    
-    # dataset = dataloader
-    list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
-    
-    ### 
-    #### Model testing 
-    model_utils.load_model(train_model, f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt")
-    
-    if args._use_wandb:
-        wandb.run.summary["beet_training_loss"] = early_stopping.best_score
-
-    # besttrack_scaler, nwp_scaler = train_dataset.get_scaler() 
-            
-    # test_dataset.set_scaler(besttrack_scaler,nwp_scaler)
-    test_dataloader=  DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     print("--------Testing-------")
     list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_ = model_utils.test_func(train_model, test_dataloader, loss_func, args, bt_scaler,device=device)
@@ -410,6 +387,7 @@ if __name__ == "__main__":
                    "rmse":rmse,
                    "r2":r2,
                    "corr":corr_})
+
     print(f"MSE: {mse} MAE:{mae} MAPE:{mape} RMSE:{rmse} R2:{r2} Corr:{corr_}")
     data = [[pred, gt] for pred, gt in zip(list_prd, list_grt)]
     table = wandb.Table(data=data, columns=["Prediction", "Ground Truth"])
