@@ -267,7 +267,7 @@ if __name__ == "__main__":
         import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=input_channels, output_dim=768 - args.prompt_dims, kernel_size=10)
         
-        prediction_head = orca_model.PredictionHead()
+        prediction_head = orca_model.PredictionHead(n_patchs=101)
         
         train_model = orca_model.Prompt_Tuning_Model6(cnn_embedder, args.body_model_name, prediction_head,args)
         
