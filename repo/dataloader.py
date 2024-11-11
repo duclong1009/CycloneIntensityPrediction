@@ -243,6 +243,7 @@ class VITDataset(Dataset):
         self.mode=  mode
         self.args = args
         self.image_size = args.image_size
+
     def fit_data(self,arr,y):
     
         arr_shape = arr.shape
@@ -386,3 +387,60 @@ class ClusterDataset(Dataset):
     def __len__(self):
         return self.x_train.shape[0]
         
+
+
+class VITDataset2(Dataset):
+    def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None):
+        super().__init__()
+        
+        self.features = args.list_features        
+            
+        self.arr = np.load(data_dir)
+        self.x_train, self.y_train, self.leading_time = self.arr['x_arr'], self.arr['groundtruth'], self.arr['leading_time']
+        del self.arr
+        if self.features is not None:
+            self.x_train = self.x_train[:,self.features, :,:]
+            
+        
+        self.nwp_scaler = nwp_scaler
+        self.bt_scaler = bt_scaler
+        
+        self.args = args
+        self.image_size = args.image_size
+
+    def fit_data(self,arr,y):
+    
+        arr_shape = arr.shape
+        reshaped_arr = arr.transpose((1,2,0))
+        
+        reshaped_arr = reshaped_arr.reshape((reshaped_arr.shape[0] * reshaped_arr.shape[1], -1))
+        
+        # self.bt_scaler.fit(y)
+        reshaped_arr =  self.nwp_scaler.transform(reshaped_arr)
+        reshaped_arr = reshaped_arr.reshape(arr_shape[1],arr_shape[2], arr_shape[0])
+        reshaped_arr = reshaped_arr.transpose(2,0,1)
+        
+        
+        # reshaped_arr = reshaped_arr[:10,:,:]
+        # reshaped_y = y.reshape(y.shape[0],1)
+        
+        if self.args.transform_groundtruth:
+            y=  np.expand_dims(np.array(y),0).reshape((1,1))
+            y = self.bt_scaler.transform(y)
+        # y = self.besttrack_scaler.transform(y)
+        return reshaped_arr, y
+
+    def __getitem__(self,idx):  
+        arr = self.x_train[idx][:,:self.image_size,:self.image_size]
+        leading_time = self.leading_time[idx]
+        bt_wp = self.y_train[idx]
+        bt_wp = bt_wp * 0.5
+        
+        arr, bt_wp = self.fit_data(arr,bt_wp)
+        
+        return {"x": arr, "y": bt_wp,'leading_time': leading_time}
+
+    
+
+    def __len__(self):
+        return self.x_train.shape[0]

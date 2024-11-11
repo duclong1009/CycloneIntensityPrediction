@@ -261,7 +261,7 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-       
+    
     elif args.model_type == "individual_prompt_vit1":
         import orca_model
 
@@ -338,7 +338,23 @@ if __name__ == "__main__":
         valid_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
-    
+    elif args.model_type == "prompt_vit3_leading_time":
+        import orca_model
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=input_channels, output_dim=768 - args.prompt_dims, kernel_size=10)
+        
+        prediction_head = orca_model.PredictionHead2(prompt_dim = args.prompt_dims)
+        
+        train_model = orca_model.Prompt_Tuning_Model_Leading_t(cnn_embedder, args.body_model_name, prediction_head,args)
+        
+        args.name = (f"{args.model_type}-freee_{args.freeze}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    if os.path.exists(f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt"):
+        pass
+    else:
+        quit()
+
     # args.name = "test"
     if args._use_wandb:
         wandb.login(key='ab2505638ca8fabd9114e88f3449ddb51e15a942')
@@ -346,26 +362,28 @@ if __name__ == "__main__":
             entity="aiotlab",
             project="Cyclone intensity prediction2",
             group=args.group_name,
-            name=f"{args.name}",
+            name=f"{args.name}_test",
             config=config,
         )
     
-    ### Data loading and Data preprocess
-    if not os.path.exists(f"output/{args.group_name}/checkpoint/"):
-        print(f"Make dir output/{args.group_name}/checkpoint/ ...")
-        os.makedirs(f"output/{args.group_name}/checkpoint/")
 
-    ## Initialize early stopping
-    early_stopping = model_utils.EarlyStopping(
-        patience=args.patience,
-        verbose=True,
-        delta=args.delta,
-        path=f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt",
-    )
+    # ### Data loading and Data preprocess
+    # if not os.path.exists(f"output/{args.group_name}/checkpoint/"):
+    #     print(f"Make dir output/{args.group_name}/checkpoint/ ...")
+    #     os.makedirs(f"output/{args.group_name}/checkpoint/")
+
+    # ## Initialize early stopping
+    # early_stopping = model_utils.EarlyStopping(
+    #     patience=args.patience,
+    #     verbose=True,
+    #     delta=args.delta,
+    #     path=f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt",
+    # )
 
     #### Model initialization
     ### dataset
     ### loss & optimizer
+
     if args.loss_func == "mse":
         loss_func = nn.MSELoss()
     elif args.loss_func == "weighted_mse":
@@ -373,12 +391,8 @@ if __name__ == "__main__":
         loss_func = loss.WeightedMSELoss()
     else:
         raise("Not correct loss function!")
-    trainable_params = filter(lambda p: p.requires_grad, train_model.parameters())
-    optimizer = torch.optim.Adam(
-        trainable_params, lr=args.lr, weight_decay=args.l2_coef
-    )
+
     #### Model trainning 
-    
     
     # device = torch.device("cuda:0")
     if args.debug:
@@ -389,22 +403,20 @@ if __name__ == "__main__":
         device = torch.device("cuda:0")
     
     # dataset = dataloader
-    list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
     
     ### 
     #### Model testing 
     model_utils.load_model(train_model, f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt")
     
-    if args._use_wandb:
-        wandb.run.summary["beet_training_loss"] = early_stopping.best_score
+    # if args._use_wandb:
+    #     wandb.run.summary["beet_training_loss"] = early_stopping.best_score
 
     # besttrack_scaler, nwp_scaler = train_dataset.get_scaler() 
             
     # test_dataset.set_scaler(besttrack_scaler,nwp_scaler)
     test_dataloader=  DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
-
     print("--------Testing-------")
-    list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_ = model_utils.test_func(train_model, test_dataloader, loss_func, args, bt_scaler,device=device)
+    list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_ = model_utils.test_func2(train_model, test_dataloader, loss_func, args, bt_scaler,device=device)
     if args._use_wandb:
         wandb.log({"mae":mae,
                    "mse":mse,

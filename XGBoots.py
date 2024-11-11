@@ -20,7 +20,7 @@ def seed_everything(seed: int):
 seed_everything(seed)
 
 # data_dir = "data69/cropped_data"
-data_dir = "cropped_data"
+data_dir = "../raw_data/generated_data2/data4"
 
 
 
@@ -71,8 +71,8 @@ wandb.login(key='ab2505638ca8fabd9114e88f3449ddb51e15a942')
 wandb.init(
     entity="aiotlab",
     project="Cyclone intensity prediction",
-    group="Data2",
-    name=f"XGBoots_seed-{seed}",
+    group="XGboots",
+    name=f"{data_dir}-{seed}",
     config={},
 )
 mae, mse, mape, rmse, r2, corr = model_utils.cal_acc(y_pred, y_test)
