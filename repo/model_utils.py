@@ -449,22 +449,59 @@ def get_scaler():
     x_train_scaled = scaler.fit_transform(x_train_reshaped)
     return scaler
 
+from sklearn.preprocessing import MinMaxScaler
+
+# def get_scaler2(args):
+#     scaler = MinMaxScaler()
+#     bt_scaler = MinMaxScaler()
+#     data_dir_train = f"{args.data_dir}/train/data.npz"
+#     arr_train = np.load(data_dir_train)
+
+#     x_train, y_train = arr_train['x_arr'], arr_train['groundtruth']
+#     x_shape = x_train.shape
+#     y_train = y_train * 0.5
+
+
+#     x_train = x_train.transpose((0,2,3,1))
+    
+#     x_train_reshaped = x_train.reshape(x_train.shape[0] * x_train.shape[1] * x_train.shape[2] , -1)
+#     from sklearn.preprocessing import MinMaxScaler
+    
+#     y_train_reshaped = y_train.reshape(y_train.shape[0],1)
+#     x_train_scaled = scaler.fit_transform(x_train_reshaped)
+#     y_train_scaled = bt_scaler.fit_transform(y_train_reshaped)
+#     return scaler, bt_scaler, x_shape
+
+
 
 def get_scaler2(args):
+    scaler = MinMaxScaler()
+    bt_scaler = MinMaxScaler()
+
     data_dir_train = f"{args.data_dir}/train/data.npz"
     arr_train = np.load(data_dir_train)
     x_train, y_train = arr_train['x_arr'], arr_train['groundtruth']
+
     y_train = y_train * 0.5
-    x_train = x_train.transpose((0,2,3,1))
+
     x_shape = x_train.shape
-    x_train_reshaped = x_train.reshape(x_train.shape[0] * x_train.shape[1] * x_train.shape[2] , -1)
-    from sklearn.preprocessing import MinMaxScaler
-    scaler = MinMaxScaler()
-    bt_scaler = MinMaxScaler()
+
+    if len(x_shape) == 4:
+        x_train = x_train.transpose((0,2,3,1))
+        x_train_reshaped = x_train.reshape(x_train.shape[0] * x_train.shape[1] * x_train.shape[2] , -1)
+        n_fts = [x_train.shape[-1]]
+    elif len(x_shape) == 5:
+        # 1000, 4,63,61,61 :  (0,1,2,3,4)
+    
+        x_train = x_train.transpose((0,1,3,4,2))
+        x_train_reshaped = x_train.reshape(x_train.shape[0] * x_train.shape[1] * x_train.shape[2] * x_train.shape[3] , -1)
+        n_fts = [x_train.shape[-1], x_train.shape[1]]
     y_train_reshaped = y_train.reshape(y_train.shape[0],1)
+
     x_train_scaled = scaler.fit_transform(x_train_reshaped)
     y_train_scaled = bt_scaler.fit_transform(y_train_reshaped)
-    return scaler, bt_scaler, x_train.shape[-1]
+
+    return scaler, bt_scaler, n_fts
 
 
 

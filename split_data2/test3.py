@@ -103,4 +103,4 @@ x_arr = np.stack(list_x,0)
 y_arr = np.stack(list_y,0)
 
 np.savez("cutted_data4/test/train_data", x_arr=x_arr, groundtruth= y_arr)
-breakpoint()
+

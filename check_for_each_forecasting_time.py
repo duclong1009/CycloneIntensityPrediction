@@ -25,4 +25,3 @@ for i in range(7):
 print("\n")
 for i in range(7):
     print(np.std(list_grt[i]))
-breakpoint()

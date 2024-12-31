@@ -67,7 +67,7 @@ for folder_name in tqdm.tqdm(os.listdir("data/unzipdata2")):
             uwnd_level = ds['u'].metpy.sel(vertical=level).squeeze()
             vwnd_level = ds['v'].metpy.sel(vertical=level).squeeze()
             dx, dy = mpcalc.lat_lon_grid_deltas(lons, lats)
-            breakpoint()
+            
 
             avor_level = mpcalc.absolute_vorticity(uwnd_level, vwnd_level)
             speed_level = mpcalc.wind_speed(uwnd_level, vwnd_level)

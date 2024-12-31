@@ -5,4 +5,3 @@ df = pd.read_csv("data/single-tc-bessttrack/1402.csv")
 t = data['time_strings']
 arr = np.load("cutted_data/train/train_data.npz")
 x,y = arr['x_arr'], arr['groundtruth']
-breakpoint()

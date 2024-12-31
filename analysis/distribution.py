@@ -17,4 +17,3 @@ plt.xlabel('Value')
 plt.ylabel('Frequency')
 plt.savefig(f"{folder_name}/data_distribution.png")
 
-breakpoint()

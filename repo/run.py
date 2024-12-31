@@ -83,7 +83,7 @@ if __name__ == "__main__":
     except IOError as msg:
         args.error(str(msg))
 
-    # breakpoint()
+    # 
     import orca_model
     model_utils.seed_everything(args.seed)
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     model_utils.load_model(train_model,model_path)
     sample1 = test_dataset[0]
     x_train, y_grt = model_utils.to_float(torch.tensor(sample1['x']).unsqueeze(0), device), model_utils.to_float(torch.tensor(sample1['y']).unsqueeze(0),device)
-    breakpoint()
+    
     y_prd = train_model(x_train)
 
     

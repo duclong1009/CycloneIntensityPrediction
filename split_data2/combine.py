@@ -9,4 +9,3 @@ combined_arr = np.concatenate(list_arr,0)
 combined_gr = np.concatenate(list_gr,0)
 np.savez("cutted_data2/train/train_data", x_arr=combined_arr, groundtruth= combined_gr)
 
-breakpoint()

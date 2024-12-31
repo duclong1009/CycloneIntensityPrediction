@@ -7,6 +7,54 @@ import torch
 import torch.nn as nn 
 import wandb
 import os
+from datetime import datetime
+import pandas as pd 
+import numpy as np
+import tqdm 
+import json
+
+list_key = ['h.npz.npy', 'landsea_mask.npz.npy',
+       'lat.npz.npy', 'lev.npz.npy', 'lev_soil.npz.npy', 'lon.npz.npy',
+       'pmsl.npz.npy', 'ps.npz.npy', 'q.npz.npy', 'rain.npz.npy',
+       't.npz.npy', 't2m.npz.npy', 'td2m.npz.npy',
+       'terrain.npz.npy', 'time.npz.npy', 'total_cloud.npz.npy',
+       'u.npz.npy', 'u10m.npz.npy', 'v.npz.npy', 'v10m.npz.npy',
+       'w.npz.npy']
+
+
+def get_history( bt_df, besttrack_id):
+        bt_his = []
+        bt_his = bt_df['Maximum sustained wind speed'].values[:besttrack_id]
+        return bt_his
+
+
+def convert_latlon_to_index(latitude,longitude):
+        import math
+        x = math.ceil((latitude + 20)/ 0.125)
+        y = math.ceil((longitude - 80)/ 0.125)
+        return x,y
+
+def crop_arr(arr, lat, lon, radius=25):
+
+        # Create an empty array filled with zeros
+        cropped_arr = np.zeros((arr.shape[0], radius * 2 + 1, radius * 2 + 1))
+        
+        # Calculate the start and end indices for the input array
+        lat_start = max(lat - radius, 0)
+        lat_end = min(lat + radius, arr.shape[1] - 1)
+        lon_start = max(lon - radius, 0)
+        lon_end = min(lon + radius, arr.shape[2] - 1)
+        
+        # Calculate the start and end indices for the cropped array
+        crop_lat_start = max(0, radius - lat)
+        crop_lat_end = crop_lat_start + (lat_end - lat_start + 1)
+        crop_lon_start = max(0, radius - lon)
+        crop_lon_end = crop_lon_start + (lon_end - lon_start + 1)
+        
+        # Copy the valid region from the input array to the cropped array
+        cropped_arr[:, crop_lat_start:crop_lat_end, crop_lon_start:crop_lon_end] = arr[:, lat_start:lat_end+1, lon_start:lon_end+1]
+        
+        return cropped_arr
 
 def get_option():
     parser = argparse.ArgumentParser()
@@ -97,10 +145,6 @@ if __name__ == "__main__":
     ### Init wandb
     
     nwp_scaler, bt_scaler, n_fts = model_utils.get_scaler2(args)
-
-
-    
-
 
     if args.model_type == "prompt_vit0":
         import orca_model
@@ -250,24 +294,11 @@ if __name__ == "__main__":
         train_model = orca_model.Prompt_Tuning_Model3(cnn_embedder, args.body_model_name, prediction_head,args)
         
         args.name = (f"{args.model_type}-freee_{args.freeze}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
-        train_dataset = dataloader.VITDatasetSLW(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        valid_dataset = dataloader.VITDatasetSLW(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        test_dataset = dataloader.VITDatasetSLW(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
-    elif args.model_type == "prompt_vit6_2":
-
-        import orca_model
-        cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
+        # train_dataset = dataloader.VITDatasetSLW(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        # valid_dataset = dataloader.VITDatasetSLW(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        # test_dataset = dataloader.VITDatasetSLW(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         
-        prediction_head = orca_model.PredictionHead(n_patchs=101)
-        
-        train_model = orca_model.Prompt_Tuning_Model6_Progressive(cnn_embedder, args.body_model_name, prediction_head,args)
-        
-        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
-        train_dataset = dataloader.VITDataset6(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        valid_dataset = dataloader.VITDataset6(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        test_dataset = dataloader.VITDataset6(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-
     
     # args.name = "test"
 
@@ -276,7 +307,7 @@ if __name__ == "__main__":
         wandb.init(
             entity="aiotlab",
             project="Cyclone intensity prediction3",
-            group=args.group_name,
+            group= "Inference",
             name=f"{args.name}",
             config=config,
         )
@@ -284,35 +315,7 @@ if __name__ == "__main__":
     # print(f"Number input channel {input_shape}")
     print("Model", args.model_type)
 
-    ### Data loading and Data preprocess
-    if not os.path.exists(f"output/{args.group_name}/checkpoint/"):
-        print(f"Make dir output/{args.group_name}/checkpoint/ ...")
-        os.makedirs(f"output/{args.group_name}/checkpoint/")
-
-    ## Initialize early stopping
-    early_stopping = model_utils.EarlyStopping(
-        patience=args.patience,
-        verbose=True,
-        delta=args.delta,
-        path=f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt",
-    )
-
-    #### Model initialization
-    ### dataset
-    ### loss & optimizer
-    if args.loss_func == "mse":
-        loss_func = nn.MSELoss()
-    elif args.loss_func == "weighted_mse":
-        import loss
-        loss_func = loss.WeightedMSELoss()
-    else:
-        raise("Not correct loss function!")
-    trainable_params = filter(lambda p: p.requires_grad, train_model.parameters())
-    optimizer = torch.optim.Adam(
-        trainable_params, lr=args.lr, weight_decay=args.l2_coef
-    )
     #### Model trainning 
-    
     
     # device = torch.device("cuda:0")
     if args.debug:
@@ -322,32 +325,96 @@ if __name__ == "__main__":
         print("Using GPU")
         device = torch.device("cuda:0")
     
-    # dataset = dataloader
-    list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
-    
-    ### 
     #### Model testing 
     model_utils.load_model(train_model, f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt")
     
-    if args._use_wandb:
-        wandb.run.summary["beet_training_loss"] = early_stopping.best_score
-
-    # besttrack_scaler, nwp_scaler = train_dataset.get_scaler() 
-            
+    
     # test_dataset.set_scaler(besttrack_scaler,nwp_scaler)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
+    index_df = pd.read_csv("2023_2024.csv")
+    save_name = "cnn_2324_"
+
+    date_format = "%Y-%m-%d %H:%M:%S"
+    date_str = "2014-01-31 00:00:00"
+    # Create a datetime object from the string
+    dt = datetime.strptime(date_str, date_format) 
+
+    test_list = [0,1,2,3,4]
+    list_gr = [[], [], [], [], [] ] 
+    list_prd = [[], [], [], [], [] ]
+    list_infor = []
+    train_model.eval()
+    with torch.no_grad():
+        for idx in tqdm.tqdm(range(len(index_df))):
+            list_his = []
+            _, tc_id, tc, date, nwp_path, time_str, besttrack_path, besttrack_id = index_df.values[idx]
+            nwp_path = nwp_path.split(".")[0]
+            bt_df = pd.read_csv(f"/home/user01/aiotlab/longnd/cyclone_prediction/raw_data/{besttrack_path}")
+            raw_bt_his = get_history(bt_df, besttrack_id).tolist()
+
+            for test_idx in test_list:
+                bt_his = raw_bt_his + list_his
+                bt_his = [0] * (64 - len(bt_his)) + bt_his
+                current_bt_idx = test_idx + besttrack_id
+                if current_bt_idx < len(bt_df):
+
+                    bt_lat, bt_lon = bt_df['Latitude of the center'][current_bt_idx], bt_df['Longitude of the center'][current_bt_idx]
+                
+                    converted_lat, converted_lon = convert_latlon_to_index(bt_lat, bt_lon)
+
+
+                    list_arr = []
+                    try:
+                        for key in list_key:
+                            
+                            arr = np.load(f"/home/user01/aiotlab/longnd/cyclone_prediction/raw_data/{nwp_path}/{key}")
+                            if len(arr.shape) == 2:
+                                arr_ = np.expand_dims(arr,0)
+                            elif len(arr.shape) == 3:
+                                arr_ = np.expand_dims(arr[test_idx],0)
+                            elif len(arr.shape) == 4:
+                                arr_ = arr[test_idx]
+                            else:
+                                pass
+                            list_arr.append(arr_)
+                        stacked_arr = np.concatenate(list_arr,0)        
+
+                        # Crop the array around the cyclone's location
+                        cropped_arr = crop_arr(stacked_arr, converted_lat, converted_lon, 50)
+                        cropped_arr = cropped_arr[:,:100,:100]
+                        if cropped_arr.shape == (63, 100, 100):
+                            
+                            cropped_arr = torch.tensor(cropped_arr,).to(device).unsqueeze(0).float()
+                            bt_his = torch.tensor(bt_his).unsqueeze(0).float()
+                            x = [cropped_arr, bt_his]
+                            output = train_model(x)
+                            out = output.detach().numpy()[0][0]
+                            list_his.append(out)
+                            bt_wp = bt_df['Maximum sustained wind speed'][current_bt_idx]
+                            list_gr[test_idx].append(bt_wp)
+                            list_prd[test_idx].append(out)
+                            list_infor.append([tc_id, tc, date, time_str,test_idx, bt_wp, out])
+                            
+                    except:
+                        pass
+    breakpoint()
+    
+    import json
+    
+    json_file_path = f"list_gr_{save_name}.json"
+    with open(json_file_path, "w") as json_file:
+        json.dump(list_gr, json_file)
+
+    json_file_path = f"list_prd_{save_name}.json"
+    with open(json_file_path, "w") as json_file:
+        json.dump(list_prd, json_file)
+    
+    json_file_path = f"list_infor_{save_name}.json"
+    columns = ["tc_id", "tc", "date", "time_str", "test_idx", "bt_wp", "out"]
+    pd.DataFrame(list_infor, columns=columns).to_json(json_file_path, orient="records", indent=4)
 
     print("--------Testing-------")
-    list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_ = model_utils.test_func(train_model, test_dataloader, loss_func, args, bt_scaler,device=device)
-    if args._use_wandb:
-        wandb.log({"mae":mae,
-                   "mse":mse,
-                   "mape":mape,
-                   "rmse":rmse,
-                   "r2":r2,
-                   "corr":corr_})
-    print(f"MSE: {mse} MAE:{mae} MAPE:{mape} RMSE:{rmse} R2:{r2} Corr:{corr_}")
-    data = [[pred, gt] for pred, gt in zip(list_prd, list_grt)]
+    data = [[pred, gt] for pred, gt in zip(list_prd, list_gr)]
     table = wandb.Table(data=data, columns=["Prediction", "Ground Truth"])
     wandb.log({"predictions_vs_groundtruths_table": table})
 

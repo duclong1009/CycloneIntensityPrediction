@@ -47,7 +47,7 @@ class SimpleCNN(nn.Module):
             nn.Linear(128, 1))
     
     def forward(self,x, loc=None):
-        # breakpoint()
+        # 
         cnn_embedding = self.CNN_extract(x)
         # cnn_embedding = torch.flatten(cnn_embedding, start_dim=1, end_dim=-1)
         output = self.linear1(cnn_embedding)

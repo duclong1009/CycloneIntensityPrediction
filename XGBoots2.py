@@ -19,7 +19,7 @@ y_test = y_test * 0.5
 
 # Extract the specific slice of the arrays
 
-# breakpoint()
+# 
 xx = 0
 x_train = x_train[:, :, 51- xx: 51 + xx, 51- xx: 51 + xx].reshape(x_train.shape[0], x_train.shape[1], -1)
 x_test = x_test[:, :, 51- xx: 51 + xx, 51- xx: 51 + xx].reshape(x_test.shape[0], x_test.shape[1], -1)

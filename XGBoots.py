@@ -6,7 +6,7 @@ import random
 import torch
 import os
 
-seed = 10
+seed = 79
 def seed_everything(seed: int):
 
     random.seed(seed)
@@ -20,7 +20,8 @@ def seed_everything(seed: int):
 seed_everything(seed)
 
 # data_dir = "data69/cropped_data"
-data_dir = "../raw_data/generated_data2/data4"
+# /home/user01/aiotlab/longnd/cyclone_prediction/CycloneIntensityPrediction/script/data_his4prediction/data13/cnn.sh
+data_dir = "../raw_data/data_his4prediction/data13"
 
 
 
@@ -52,8 +53,8 @@ x_train_scaled = scaler.fit_transform(x_train_reshaped)
 x_test_scaled = scaler.transform(x_test_reshaped)
 
 # Initialize and train the model
-model = XGBRegressor(objective='reg:squarederror', colsample_bytree=0.3, learning_rate=0.1,
-                     max_depth=5, alpha=10, n_estimators=100, seed= seed)
+model = XGBRegressor(objective='reg:squarederror', colsample_bytree=0.8, subsample=0.8, learning_rate=0.1,
+                     max_depth=5, alpha=10, n_estimators=100, random_state= seed)
 
 model.fit(x_train_scaled, y_train)
 

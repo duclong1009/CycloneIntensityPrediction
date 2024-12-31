@@ -144,7 +144,7 @@ class CycloneDataset2(Dataset):
         self.args = args
 
     def fit_data(self,arr,y):
-        # breakpoint()
+        # 
     
         arr_shape = arr.shape
         reshaped_arr = arr.transpose((1,2,0))
@@ -166,6 +166,13 @@ class CycloneDataset2(Dataset):
 
     def __getitem__(self,idx):
         arr = self.x_train[idx]
+        
+
+        if len(arr.shape) == 4:
+            arr = arr[-1]
+        elif len(arr.shape) == 3:
+            arr = arr
+
         bt_wp = self.y_train[idx]
         bt_wp = bt_wp * 0.5
         arr, bt_wp = self.fit_data(arr,bt_wp)
@@ -177,7 +184,145 @@ class CycloneDataset2(Dataset):
         return self.x_train.shape[0]
         
 
+class VITDataset6(Dataset):
+    def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
+        super().__init__()
+        
+        self.features = args.list_features        
+            
+        self.arr = np.load(data_dir)
+        self.x_train, self.y_train, self.his = self.arr['x_arr'], self.arr['groundtruth'], self.arr['his']
+        
+        if self.features is not None:
+            self.x_train = self.x_train[:,self.features, :,:]
+            
+        self.besttrack_scaler_path = besttrack_scaler_path
+        self.nwp_scaler_path = nwp_scaler_path
+        
+        self.nwp_scaler = nwp_scaler
+        self.bt_scaler = bt_scaler
+        
+        self.mode=  mode
+        self.args = args
+        self.image_size = args.image_size
 
+    def fit_data(self,arr,y):
+    
+        arr_shape = arr.shape
+        reshaped_arr = arr.transpose((1,2,0))
+        
+        reshaped_arr = reshaped_arr.reshape((reshaped_arr.shape[0] * reshaped_arr.shape[1], -1))
+        
+        # self.bt_scaler.fit(y)
+        reshaped_arr =  self.nwp_scaler.transform(reshaped_arr)
+        reshaped_arr = reshaped_arr.reshape(arr_shape[1],arr_shape[2], arr_shape[0])
+        reshaped_arr = reshaped_arr.transpose(2,0,1)
+        
+        
+        # reshaped_arr = reshaped_arr[:10,:,:]
+        # reshaped_y = y.reshape(y.shape[0],1)
+        
+        if self.args.transform_groundtruth:
+            y = np.expand_dims(np.array(y),0).reshape((1,1))
+            y = self.bt_scaler.transform(y)
+        # y = self.besttrack_scaler.transform(y)
+        return reshaped_arr, y
+
+    def __getitem__(self,idx):
+        """
+        x_train: [400,4,63,101,101] / [400,63,101,101]
+        """
+
+        arr = self.x_train[idx]
+
+        if len(arr.shape) == 4:
+            arr = arr[-1,:,:self.image_size,:self.image_size]
+        elif len(arr.shape) == 3:
+            arr = arr[:,:self.image_size,:self.image_size]
+        
+
+        bt_wp = self.y_train[idx]
+        bt_wp = bt_wp * 0.5
+        
+        arr, bt_wp = self.fit_data(arr,bt_wp)
+        his = self.his[idx]
+        arr = [arr, his]
+        return {"x": arr, "y": bt_wp}
+
+    def __len__(self):
+        return self.x_train.shape[0]
+
+
+
+class VITDataset6_2(Dataset):
+    def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
+        super().__init__()
+        
+        self.features = args.list_features        
+            
+        self.arr = np.load(data_dir)
+        self.x_train, self.y_train, self.his = self.arr['x_arr'], self.arr['groundtruth'], self.arr['his']
+        
+        if self.features is not None:
+            self.x_train = self.x_train[:,self.features, :,:]
+            
+        self.besttrack_scaler_path = besttrack_scaler_path
+        self.nwp_scaler_path = nwp_scaler_path
+        
+        self.nwp_scaler = nwp_scaler
+        self.bt_scaler = bt_scaler
+        
+        self.mode=  mode
+        self.args = args
+        self.image_size = args.image_size
+
+    def fit_data(self,arr,y):
+    
+        arr_shape = arr.shape
+        reshaped_arr = arr.transpose((1,2,0))
+        
+        reshaped_arr = reshaped_arr.reshape((reshaped_arr.shape[0] * reshaped_arr.shape[1], -1))
+        
+        # self.bt_scaler.fit(y)
+        reshaped_arr =  self.nwp_scaler.transform(reshaped_arr)
+        reshaped_arr = reshaped_arr.reshape(arr_shape[1],arr_shape[2], arr_shape[0])
+        reshaped_arr = reshaped_arr.transpose(2,0,1)
+        
+        
+        # reshaped_arr = reshaped_arr[:10,:,:]
+        # reshaped_y = y.reshape(y.shape[0],1)
+        
+        if self.args.transform_groundtruth:
+            y = np.expand_dims(np.array(y),0).reshape((1,1))
+            y = self.bt_scaler.transform(y)
+        # y = self.besttrack_scaler.transform(y)
+        return reshaped_arr, y
+
+    def __getitem__(self,idx):
+        """
+        x_train: [400,4,63,101,101] / [400,63,101,101]
+        """
+
+        arr = self.x_train[idx]
+
+        if len(arr.shape) == 4:
+            arr = arr[-1,:,:self.image_size,:self.image_size]
+        elif len(arr.shape) == 3:
+            arr = arr[:,:self.image_size,:self.image_size]
+        
+
+        bt_wp = self.y_train[idx]
+        bt_wp = bt_wp * 0.5
+        
+        arr, bt_wp = self.fit_data(arr,bt_wp)
+        his = self.his[idx]
+        arr = [arr, his]
+        return {"x": arr, "y": bt_wp}
+
+    def __len__(self):
+        return self.x_train.shape[0]
+
+         
 class CycloneDataset3(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", args=None, scaler=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
@@ -268,7 +413,11 @@ class VITDataset(Dataset):
 
 
     def __getitem__(self,idx):
-        arr = self.x_train[idx][:,:self.image_size,:self.image_size]
+        arr = self.x_train[idx] 
+        if len(arr.shape) == 4:
+            arr = arr[-1,:,:self.image_size,:self.image_size]
+        elif len(arr.shape) == 3:
+            arr = arr[:,:self.image_size,:self.image_size]
         
         bt_wp = self.y_train[idx]
         bt_wp = bt_wp * 0.5
@@ -281,6 +430,120 @@ class VITDataset(Dataset):
     def __len__(self):
         return self.x_train.shape[0]
         
+
+
+class VITDatasetSLW(Dataset):
+    def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None):
+        super().__init__()
+        
+        self.features = args.list_features        
+            
+        self.arr = np.load(data_dir)
+
+        # 1000, 4,63,61,61
+        self.x_train, self.y_train, self.his = self.arr['x_arr'], self.arr['groundtruth'], self.arr['his']
+        
+        if self.features is not None:
+            self.x_train = self.x_train[:,self.features, :,:]
+            
+        
+        self.nwp_scaler = nwp_scaler
+        self.bt_scaler = bt_scaler
+        
+        self.mode = mode
+        self.args = args
+        self.image_size = args.image_size
+
+    def fit_data(self,arr,y):
+        ## arr shape 4,63,100,100
+        arr_shape = arr.shape
+        reshaped_arr = arr.transpose((0,2,3,1)) # 4,100,100, 63
+        
+        reshaped_arr = reshaped_arr.reshape((reshaped_arr.shape[0] * reshaped_arr.shape[1] * reshaped_arr.shape[2], -1))
+        
+        # self.bt_scaler.fit(y)
+        reshaped_arr =  self.nwp_scaler.transform(reshaped_arr)
+        reshaped_arr = reshaped_arr.reshape(arr_shape[0],arr_shape[2],arr_shape[3], arr_shape[1]) # 4,100,100, 63
+        reshaped_arr = reshaped_arr.transpose(0,3,1,2) # 4, 63, 100,100
+        reshaped_arr = reshaped_arr.reshape(-1, reshaped_arr.shape[2], reshaped_arr.shape[3]) # 252,100,100
+        
+        if self.args.transform_groundtruth:
+            y =  np.expand_dims(np.array(y),0).reshape((1,1))
+            y = self.bt_scaler.transform(y)
+        # y = self.besttrack_scaler.transform(y)
+   
+        return reshaped_arr, y
+
+
+    def __getitem__(self,idx):
+        arr = self.x_train[idx][:,:,:self.image_size,:self.image_size]
+        
+        bt_wp = self.y_train[idx]
+        bt_wp = bt_wp * 0.5
+
+        his = self.his[idx]
+        arr, bt_wp = self.fit_data(arr,bt_wp)
+        return {"x": arr, "y": bt_wp}
+    
+    def __len__(self):
+        return self.x_train.shape[0]
+
+class VITDatasetSLW6(Dataset):
+    def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None):
+        super().__init__()
+        
+        self.features = args.list_features        
+            
+        self.arr = np.load(data_dir)
+
+        # 1000, 4,63,61,61
+        self.x_train, self.y_train, self.his = self.arr['x_arr'], self.arr['groundtruth'], self.arr['his']
+        
+        if self.features is not None:
+            self.x_train = self.x_train[:,self.features, :,:]
+            
+        
+        self.nwp_scaler = nwp_scaler
+        self.bt_scaler = bt_scaler
+        
+        self.mode = mode
+        self.args = args
+        self.image_size = args.image_size
+
+    def fit_data(self,arr,y):
+        ## arr shape 4,63,100,100
+        arr_shape = arr.shape
+        reshaped_arr = arr.transpose((0,2,3,1)) # 4,100,100, 63
+        
+        reshaped_arr = reshaped_arr.reshape((reshaped_arr.shape[0] * reshaped_arr.shape[1] * reshaped_arr.shape[2], -1))
+        
+        # self.bt_scaler.fit(y)
+        reshaped_arr =  self.nwp_scaler.transform(reshaped_arr)
+        reshaped_arr = reshaped_arr.reshape(arr_shape[0],arr_shape[2],arr_shape[3], arr_shape[1]) # 4,100,100, 63
+        reshaped_arr = reshaped_arr.transpose(0,3,1,2) # 4, 63, 100,100
+        reshaped_arr = reshaped_arr.reshape(-1, reshaped_arr.shape[2], reshaped_arr.shape[3]) # 252,100,100
+        
+        if self.args.transform_groundtruth:
+            y =  np.expand_dims(np.array(y),0).reshape((1,1))
+            y = self.bt_scaler.transform(y)
+        # y = self.besttrack_scaler.transform(y)
+   
+        return reshaped_arr, y
+
+    def __getitem__(self,idx):
+        arr = self.x_train[idx][:,:,:self.image_size,:self.image_size]
+        
+        bt_wp = self.y_train[idx]
+        bt_wp = bt_wp * 0.5
+
+        his = self.his[idx]
+        arr, bt_wp = self.fit_data(arr,bt_wp)
+        arr = [arr, his]
+        return {"x": arr, "y": bt_wp}
+    
+
+    def __len__(self):
+        return self.x_train.shape[0]
         
 # class VITDataset3(Dataset):
 #     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
@@ -380,7 +643,7 @@ class ClusterDataset(Dataset):
         list_arr = []
         for index_list in self.cluster_index:
             list_arr.append(arr[index_list,:,:])
-        # breakpoint()
+        # 
         return {"x": list_arr, "y": bt_wp}
     
 
