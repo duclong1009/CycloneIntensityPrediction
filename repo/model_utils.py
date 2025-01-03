@@ -5,6 +5,7 @@ from tqdm import tqdm
 import wandb
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
+import pickle
 
 def seed_everything(seed: int):
 
@@ -102,7 +103,7 @@ def to_float(x, device):
         x = x.to(device).float()
         
     return x
-
+ 
 
 def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
     model.train()
@@ -437,6 +438,84 @@ def test_func(model, test_dataloader,criterion , args, besttrack_scaler,device):
     
     return list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_
 
+import json
+def fit_scalers_in_batches(args, batch_size=100):
+    """
+    Args:
+        args: Argument object containing the path to the data directory.
+        batch_size: Number of samples per batch for incremental fitting.
+    
+    Returns:
+        scaler: MinMaxScaler for input data.
+        bt_scaler: MinMaxScaler for target data.
+        n_fts: List of feature dimensions for input data.
+    """
+
+    scaler = MinMaxScaler()
+    bt_scaler = MinMaxScaler()
+    
+
+    print("Process data by batch")
+    if os.path.exists(f"{args.data_dir}/scaler/scaler.pkl"):
+        print("Load scaler")
+        with open(f"{args.data_dir}/scaler/x_shape.json", "r") as f:
+            x_shape = json.load(f)
+
+        with open(f"{args.data_dir}/scaler/scaler.pkl", "rb") as f:
+            scaler = pickle.load(f)
+        
+        with open(f"{args.data_dir}/scaler/bt_scaler.pkl", "rb") as f:
+            bt_scaler = pickle.load(f)
+        
+        if len(x_shape) == 4:  # 4D input: (batch, height, width, channels)
+                n_fts = [x_shape[1]]
+        elif len(x_shape) == 5:  # 5D input: (batch, time, height, width, channels)
+            n_fts = [x_shape[2], x_shape[1]]
+        else:
+            raise ValueError(f"Unsupported input shape: {x_shape}")
+    else:
+        print("Cal scaler")
+        data_dir_train = f"{args.data_dir}/train/data.npz"
+        arr_train = np.load(data_dir_train)
+
+        x_train, y_train = arr_train['x_arr'], arr_train['groundtruth']
+        y_train *= 0.5
+
+        x_shape = x_train.shape
+        y_train_reshaped = y_train.reshape(-1, 1)
+        bt_scaler.fit(y_train_reshaped)  # Fit the target scaler
+
+        print("X shape", x_shape)
+        if len(x_shape) == 4:
+            # For 4D input: (batch, height, width, channels)
+            x_train = x_train.transpose((0, 2, 3, 1))
+            x_train_reshaped = x_train.reshape(-1, x_shape[1])
+            n_fts = [x_train.shape[-1]]
+        elif len(x_shape) == 5:
+            # For 5D input: (batch, time, height, width, channels)
+            x_train = x_train.transpose((0, 1, 3, 4, 2))
+            x_train_reshaped = x_train.reshape(-1, x_shape[2])
+            n_fts = [x_train.shape[-1], x_train.shape[1]]
+        else:
+            raise ValueError(f"Unsupported input shape: {x_shape}")
+
+        # Reshape target data
+
+        # Fit scalers
+        print("X_train_reshaped", x_train_reshaped.shape)
+        x_train_scaled = scaler.fit_transform(x_train_reshaped)
+        os.makedirs(f"{args.data_dir}/scaler", exist_ok=True)
+        with open(f"{args.data_dir}/scaler/scaler.pkl", "wb") as f:
+            pickle.dump(scaler, f)
+        
+        with open(f"{args.data_dir}/scaler/bt_scaler.pkl", "wb") as f:
+            pickle.dump(bt_scaler,f)
+        
+        with open(f"{args.data_dir}/scaler/x_shape.json", "w") as f:
+            x_shape = json.dump(x_shape,f)
+    print("Preprocess Done!!!")
+    return scaler, bt_scaler, n_fts
+
 
 def get_scaler():
     data_dir_train = "cutted_data/train/train_data.npz"
@@ -451,59 +530,52 @@ def get_scaler():
 
 from sklearn.preprocessing import MinMaxScaler
 
-# def get_scaler2(args):
-#     scaler = MinMaxScaler()
-#     bt_scaler = MinMaxScaler()
-#     data_dir_train = f"{args.data_dir}/train/data.npz"
-#     arr_train = np.load(data_dir_train)
-
-#     x_train, y_train = arr_train['x_arr'], arr_train['groundtruth']
-#     x_shape = x_train.shape
-#     y_train = y_train * 0.5
-
-
-#     x_train = x_train.transpose((0,2,3,1))
-    
-#     x_train_reshaped = x_train.reshape(x_train.shape[0] * x_train.shape[1] * x_train.shape[2] , -1)
-#     from sklearn.preprocessing import MinMaxScaler
-    
-#     y_train_reshaped = y_train.reshape(y_train.shape[0],1)
-#     x_train_scaled = scaler.fit_transform(x_train_reshaped)
-#     y_train_scaled = bt_scaler.fit_transform(y_train_reshaped)
-#     return scaler, bt_scaler, x_shape
-
-
-
 def get_scaler2(args):
+    """
+    Function to compute scalers and feature dimensions for training data.
+    Args:
+        args: Argument object containing the path to data directory.
+
+    Returns:
+        scaler: MinMaxScaler for input data.
+        bt_scaler: MinMaxScaler for target data.
+        n_fts: List of feature dimensions for input data.
+    """
+    # Initialize scalers
     scaler = MinMaxScaler()
     bt_scaler = MinMaxScaler()
 
+    # Load training data
     data_dir_train = f"{args.data_dir}/train/data.npz"
     arr_train = np.load(data_dir_train)
     x_train, y_train = arr_train['x_arr'], arr_train['groundtruth']
 
-    y_train = y_train * 0.5
+    # Scale target data
+    y_train *= 0.5
 
+    # Reshape and prepare input data
     x_shape = x_train.shape
-
     if len(x_shape) == 4:
-        x_train = x_train.transpose((0,2,3,1))
-        x_train_reshaped = x_train.reshape(x_train.shape[0] * x_train.shape[1] * x_train.shape[2] , -1)
+        # For 4D input: (batch, height, width, channels)
+        x_train = x_train.transpose((0, 2, 3, 1))
+        x_train_reshaped = x_train.reshape(-1, x_shape[1])
         n_fts = [x_train.shape[-1]]
     elif len(x_shape) == 5:
-        # 1000, 4,63,61,61 :  (0,1,2,3,4)
-    
-        x_train = x_train.transpose((0,1,3,4,2))
-        x_train_reshaped = x_train.reshape(x_train.shape[0] * x_train.shape[1] * x_train.shape[2] * x_train.shape[3] , -1)
+        # For 5D input: (batch, time, height, width, channels)
+        x_train = x_train.transpose((0, 1, 3, 4, 2))
+        x_train_reshaped = x_train.reshape(-1, x_shape[4])
         n_fts = [x_train.shape[-1], x_train.shape[1]]
-    y_train_reshaped = y_train.reshape(y_train.shape[0],1)
+    else:
+        raise ValueError(f"Unsupported input shape: {x_shape}")
 
+    # Reshape target data
+    y_train_reshaped = y_train.reshape(-1, 1)
+
+    # Fit scalers
     x_train_scaled = scaler.fit_transform(x_train_reshaped)
     y_train_scaled = bt_scaler.fit_transform(y_train_reshaped)
 
     return scaler, bt_scaler, n_fts
-
-
 
 def train_func2(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
     model.train()

@@ -918,55 +918,63 @@ class Prompt_Tuning_Model6_Progressive(nn.Module):
         self.cnn_embed = cnn_embed
         self.linear = nn.Linear(64, 768)
         self.prediction_head = prediction_head
-        self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+        self.prompt_token = nn.Parameter(torch.randn(1, 100, prompt_dim)) 
         
         self.use_position_embedding = args.use_position_embedding
         
         if self.use_position_embedding:
             emb_size = 768
-            # self.cls_token = nn.Parameter(torch.randn(1,100, emb_size))
             self.positions = nn.Parameter(torch.randn(100, emb_size))
 
 
     def forward(self,x):
         ### adding promt token at the begin of body model
-        # 
+        
         """
         format for x: [nwp_data, his, nwp_id]
         nwp_data.shape [32,5, 63,100,100]]
 
         """
-        breakpoint()
+        
         batch_size = x[0].shape[0]
         nwp_data = x[0]
         his = x[1]
         nwp_id = x[2]
 
-        extra_his = None
-        prompt_token_expanded = self.prompt_token.expand(batch_size, -1)  # Expand prompt token to batch 
-        list_extra_his = []
+        
+        # prompt_token_expanded = self.prompt_token.expand(batch_size, )  # Expand prompt token to batch 
 
-        for lead_time in range(nwp_id):
-            embedding_x = self.cnn_embed(nwp_data[:,lead_time,:,:,:]) # 100 640
-            embedding_x = torch.cat([embedding_x, prompt_token_expanded.unsqueeze(1).repeat(1,embedding_x.shape[1],1)], dim=-1)
-            if self.use_position_embedding:
-                embedding_x += self.positions
-            body_output=  self.body_model(embedding_x)
-            body_output = body_output.last_hidden_state
+        list_output = []
+        for sample_id in range(batch_size):
+            extra_his = None
+            list_extra_his = []
+            sample_nwp_id = nwp_id[sample_id]
+            sample_nwp_data = nwp_data[sample_id] ### 6,63,101,101
+            his_i = his[sample_id].unsqueeze(0)
+            current_his = his_i
+            # print(sample_nwp_id)
+            for lead_time in range(int(sample_nwp_id)+1):
+                # print(sample_nwp_data[lead_time,:,:,:].unsqueeze(0).shape, self.cnn_embed)
+                embedding_x = self.cnn_embed(sample_nwp_data[lead_time,:,:,:].unsqueeze(0)) ### 1, 100,x
+                embedding_x = torch.cat([embedding_x, self.prompt_token], dim=-1) ### 1, 100, 768
+                if self.use_position_embedding:
+                    embedding_x += self.positions
+                body_output=  self.body_model(embedding_x)
+                body_output = body_output.last_hidden_state
+                
+                his_embed = self.linear(current_his) #768
+
+                body_output = torch.cat([body_output, his_embed[:, None, :]], 1)
+                body_output = self.layernorm(body_output)
+                prediction_lead_tine = self.prediction_head(body_output)
+             
+
+                current_his = torch.concat([current_his, prediction_lead_tine], -1)[:,-64:]
             
-            if extra_his is not None:
-                ### Long need to modify this code 
-                extra_his = torch.stack([copy.deepcopy(his), extra_his], -1)[:,-64:]
-            else:
-                extra_his = copy.deepcopy(his)
+            list_output.append(prediction_lead_tine)
+        output = torch.concat(list_output,0)
+        return output
 
 
-            his_embed = self.linear(current_his) #768
-            body_output = torch.cat([body_output, his_embed[:, None, :]], 1)
-            body_output = self.layernorm(body_output)
-            prediction_lead_tine = self.prediction_head(body_output)
-            list_extra_his.append(prediction_lead_tine) ### shape 32,1
 
-            extra_his = torch.stack(list_extra_his, -1)
 
-        return prediction_lead_tine

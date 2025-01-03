@@ -96,11 +96,7 @@ if __name__ == "__main__":
     # scaler = model_utils.get_scaler()
     ### Init wandb
     
-    nwp_scaler, bt_scaler, n_fts = model_utils.get_scaler2(args)
-
-
-    
-
+    nwp_scaler, bt_scaler, n_fts = model_utils.fit_scalers_in_batches(args)
 
     if args.model_type == "prompt_vit0":
         import orca_model
@@ -257,6 +253,7 @@ if __name__ == "__main__":
     elif args.model_type == "prompt_vit6_2":
 
         import orca_model
+        print("No. fts", n_fts[0])
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(n_patchs=101)
@@ -264,9 +261,9 @@ if __name__ == "__main__":
         train_model = orca_model.Prompt_Tuning_Model6_Progressive(cnn_embedder, args.body_model_name, prediction_head,args)
         
         args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
-        train_dataset = dataloader.VITDataset6(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        valid_dataset = dataloader.VITDataset6(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        test_dataset = dataloader.VITDataset6(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        train_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
 
     
     # args.name = "test"
@@ -315,6 +312,8 @@ if __name__ == "__main__":
     
     
     # device = torch.device("cuda:0")
+    # if torch.cuda.is_availabel():
+
     if args.debug:
         print("Using CPU")
         device = torch.device("cpu")
