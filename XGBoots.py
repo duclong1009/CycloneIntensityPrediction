@@ -6,7 +6,7 @@ import random
 import torch
 import os
 
-seed = 79
+seed = 52
 def seed_everything(seed: int):
 
     random.seed(seed)
@@ -19,11 +19,7 @@ def seed_everything(seed: int):
 
 seed_everything(seed)
 
-# data_dir = "data69/cropped_data"
-# /home/user01/aiotlab/longnd/cyclone_prediction/CycloneIntensityPrediction/script/data_his4prediction/data13/cnn.sh
-data_dir = "../raw_data/data_his4prediction/data13"
-
-
+data_dir = ""
 
 # Load training data
 data_dir_train = f"{data_dir}/train/data.npz"
@@ -37,9 +33,6 @@ arr_test = np.load(data_dir_test)
 x_test, y_test = arr_test['x_arr'], arr_test['groundtruth']
 y_test = y_test * 0.5
 
-# Extract the specific slice of the arrays
-x_train = x_train[:, :, 51, 51]
-x_test = x_test[:, :, 51, 51]
 
 # Reshape the data to 2D arrays for scaling
 x_train_reshaped = x_train.reshape(x_train.shape[0], -1)
