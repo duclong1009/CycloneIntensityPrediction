@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# Co history
 class CNN1(nn.Module):
     def __init__(self, input_channels, output_dim, kernel_size=20, prediction_head=None, args=None):
         super(CNN1,self).__init__()
@@ -72,6 +73,7 @@ class CNN1(nn.Module):
         output = torch.concat(list_output,0)
         return output
     
+# Khong co history
 class CNN2(nn.Module):
     def __init__(self, input_channels, output_dim, kernel_size=20, prediction_head=None, args=None):
         super(CNN1,self).__init__()
@@ -133,3 +135,4 @@ class CNN2(nn.Module):
             list_output.append(prediction_lead_tine)
         output = torch.concat(list_output,0)
         return output
+    
