@@ -978,3 +978,89 @@ class Prompt_Tuning_Model6_Progressive(nn.Module):
 
 
 
+class Prompt_Tuning_Model6_Progressive2(nn.Module):
+    def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
+        super(Prompt_Tuning_Model6_Progressive2,self).__init__()
+        
+        prompt_dim = args.prompt_dims
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            self.body_model =  copy.deepcopy(model.encoder)
+
+        elif body_model_name == 'scratch_vit':
+            config = ViTConfig()  # Use default configuration or modify as needed   
+            model = ViTModel(config)
+            self.body_model =  copy.deepcopy(model.encoder)
+
+        else:
+            raise ValueError("Not correct body model name")
+        
+        self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
+
+        self.cnn_embed = cnn_embed
+        self.linear = nn.Linear(64, 768)
+        self.prediction_head = prediction_head
+        self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+        
+        self.use_position_embedding = args.use_position_embedding
+        
+        if self.use_position_embedding:
+            emb_size = 768
+            self.positions = nn.Parameter(torch.randn(100, emb_size))
+
+
+    def forward(self,x):
+        ### adding promt token at the begin of body model
+        
+        """
+        format for x: [nwp_data, his, nwp_id]
+        nwp_data.shape [32,5, 63,100,100]]
+
+        """
+        
+        batch_size = x[0].shape[0]
+        nwp_data = x[0]
+        his = x[1]
+        nwp_id = x[2]
+
+        
+        # prompt_token_expanded = self.prompt_token.expand(batch_size, )  # Expand prompt token to batch 
+
+        list_output = []
+        expaned_prompt_token = self.prompt_token.unsqueeze(1)
+        expaned_prompt_token = expaned_prompt_token.repeat(1,100,1)
+        for sample_id in range(batch_size):
+            extra_his = None
+            list_extra_his = []
+            sample_nwp_id = nwp_id[sample_id]
+            sample_nwp_data = nwp_data[sample_id] ### 6,63,101,101
+            his_i = his[sample_id].unsqueeze(0)
+            current_his = his_i
+            # print(sample_nwp_id)
+            
+            for lead_time in range(int(sample_nwp_id)+1):
+                # print(sample_nwp_data[lead_time,:,:,:].unsqueeze(0).shape, self.cnn_embed)
+                embedding_x = self.cnn_embed(sample_nwp_data[lead_time,:,:,:].unsqueeze(0)) ### 1, 100,x
+
+                embedding_x = torch.cat([embedding_x, expaned_prompt_token], dim=-1) ### 1, 100, 768 , 
+                if self.use_position_embedding:
+                    embedding_x += self.positions
+                body_output=  self.body_model(embedding_x)
+                body_output = body_output.last_hidden_state
+                
+                his_embed = self.linear(current_his) #768
+
+                body_output = torch.cat([body_output, his_embed[:, None, :]], 1)
+                body_output = self.layernorm(body_output)
+                prediction_lead_tine = self.prediction_head(body_output)
+             
+
+                current_his = torch.concat([current_his, prediction_lead_tine], -1)[:,-64:]
+            
+            list_output.append(prediction_lead_tine)
+        output = torch.concat(list_output,0)
+        return output
+
+
+
+
