@@ -7,7 +7,10 @@ import torch
 import torch.nn as nn 
 import wandb
 import os
+import baseline
 
+import orca_model
+        
 def get_option():
     parser = argparse.ArgumentParser()
     
@@ -99,7 +102,6 @@ if __name__ == "__main__":
     nwp_scaler, bt_scaler, n_fts = model_utils.fit_scalers_in_batches(args)
 
     if args.model_type == "prompt_vit0":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(dim = 768)
@@ -113,7 +115,6 @@ if __name__ == "__main__":
     
     
     elif args.model_type == "prompt_vit1":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
@@ -126,7 +127,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
     elif args.model_type == "prompt_vit2":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
@@ -139,7 +139,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         
     elif args.model_type == "prompt_vit3":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead()
@@ -152,7 +151,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         
     elif args.model_type == "prompt_vit4":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead()
@@ -165,7 +163,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
    
     elif args.model_type == "prompt_vit5":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=58, output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(dim = 768 + args.prompt_dims)
@@ -178,7 +175,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
     elif args.model_type == "prompt_vit3_leading_time":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead2(prompt_dim = args.prompt_dims)
@@ -192,7 +188,6 @@ if __name__ == "__main__":
         
         
     elif args.model_type == "prompt_vit7":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(n_patchs = 100 + args.prompt_length)
@@ -205,7 +200,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDataset(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
     elif args.model_type == "prompt_vit6":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(n_patchs=101)
@@ -225,7 +219,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.CycloneDataset2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
     elif args.model_type == "prompt_vit6_use_historicaldata":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0] * n_fts[1], output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead(n_patchs=101)
@@ -238,7 +231,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDatasetSLW6(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
 
     elif args.model_type == "prompt_vit3_use_historicaldata":
-        import orca_model
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
         prediction_head = orca_model.PredictionHead()
@@ -251,8 +243,6 @@ if __name__ == "__main__":
         test_dataset = dataloader.VITDatasetSLW(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
     elif args.model_type == "prompt_vit6_2":
-
-        import orca_model
         print("No. fts", n_fts[0])
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
@@ -267,8 +257,6 @@ if __name__ == "__main__":
 
     
     elif args.model_type == "prompt_vit6_3":
-
-        import orca_model
         print("No. fts", n_fts[0])
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
@@ -276,6 +264,18 @@ if __name__ == "__main__":
         
         train_model = orca_model.Prompt_Tuning_Model6_Progressive2(cnn_embedder, args.body_model_name, prediction_head,args)
         
+        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+
+    elif args.model_type == "convlstm1":
+        # cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
+        
+        prediction_head = orca_model.PredictionHead(n_patchs=100)
+        
+        train_model = baseline.ConvLSTM2(input_channels=n_fts[0], output_dim=768, kernel_size=5, num_layers=2, prediction_head=prediction_head, args=args)
+                
         args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-pse_{args.use_position_embedding}-SLr_{args._use_scheduler_lr}_{args.scheduler_type}-loss_func_{args.loss_func}-{args.backbone_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)

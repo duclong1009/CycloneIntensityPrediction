@@ -116,16 +116,6 @@ class CycloneDataset(Dataset):
     def __len__(self):
         return len(self.map_idx)
         
-
-
-
-from torch.utils.data import Dataset
-import pandas as pd
-import numpy as np
-import os 
-from sklearn.preprocessing import MinMaxScaler
-import pickle
-
 class CycloneDataset2(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
@@ -182,7 +172,6 @@ class CycloneDataset2(Dataset):
     def __len__(self):
         return self.x_train.shape[0]
         
-
 class VITDataset6(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
@@ -251,9 +240,11 @@ class VITDataset6(Dataset):
     def __len__(self):
         return self.x_train.shape[0]
 
-
-
 class VITDataset6_2(Dataset):
+    """
+    For training prompt6 the item format is: 
+        - arr: nwp data
+    """
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
         
@@ -277,7 +268,7 @@ class VITDataset6_2(Dataset):
         self.image_size = args.image_size
 
     def fit_data(self,arr,y):
-        
+        # breakpoint()
         arr_shape = arr.shape
         if len(arr_shape) == 4:
             # print(arr_shape)
@@ -311,10 +302,9 @@ class VITDataset6_2(Dataset):
         arr = self.x_train[idx]
         
         if len(arr.shape) == 4:
-            arr = arr[:,:self.image_size,:self.image_size]
+            arr = arr[:,:,:self.image_size,:self.image_size]
         elif len(arr.shape) == 3:
             arr = arr[:,:self.image_size,:self.image_size]
-        
         
 
         bt_wp = self.y_train[idx]
@@ -328,8 +318,7 @@ class VITDataset6_2(Dataset):
 
     def __len__(self):
         return self.x_train.shape[0]
-
-         
+        
 class CycloneDataset3(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", args=None, scaler=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
@@ -373,7 +362,6 @@ class CycloneDataset3(Dataset):
     def __len__(self):
         return self.x_train.shape[0]
         
-
 class VITDataset(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
@@ -441,8 +429,6 @@ class VITDataset(Dataset):
     def __len__(self):
         return self.x_train.shape[0]
         
-
-
 class VITDatasetSLW(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None):
         super().__init__()
@@ -555,9 +541,7 @@ class VITDatasetSLW6(Dataset):
 
     def __len__(self):
         return self.x_train.shape[0]
-        
-
-        
+              
 class ClusterDataset(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
@@ -615,9 +599,7 @@ class ClusterDataset(Dataset):
 
     def __len__(self):
         return self.x_train.shape[0]
-        
-
-
+    
 class VITDataset2(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None):
         super().__init__()

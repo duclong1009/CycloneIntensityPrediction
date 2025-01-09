@@ -1061,6 +1061,3 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
         output = torch.concat(list_output,0)
         return output
 
-
-
-
