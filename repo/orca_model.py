@@ -913,6 +913,10 @@ class Prompt_Tuning_Model6_Progressive(nn.Module):
         else:
             raise ValueError("Not correct body model name")
         
+        if args.freeze:
+            for param in self.body_model.parameters():
+                param.requires_grad = False
+                
         self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
 
         self.cnn_embed = cnn_embed
@@ -995,6 +999,10 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
         else:
             raise ValueError("Not correct body model name")
         
+        if args.freeze:
+            for param in self.body_model.parameters():
+                param.requires_grad = False
+                
         self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
 
         self.cnn_embed = cnn_embed
