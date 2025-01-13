@@ -1011,10 +1011,13 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
         self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
         
         self.use_position_embedding = args.use_position_embedding
+        self.image_size = args.image_size
+        self.kernel_size = 10
+        
         
         if self.use_position_embedding:
             emb_size = 768
-            self.positions = nn.Parameter(torch.randn(100, emb_size))
+            self.positions = nn.Parameter(torch.randn((self.image_size // self.kernel_size) ** 2, emb_size))
 
 
     def forward(self,x):
@@ -1036,10 +1039,9 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
 
         list_output = []
         expaned_prompt_token = self.prompt_token.unsqueeze(1)
-        expaned_prompt_token = expaned_prompt_token.repeat(1,100,1)
+        
+        expaned_prompt_token = expaned_prompt_token.repeat(1, (self.image_size // self.kernel_size) ** 2,1)
         for sample_id in range(batch_size):
-            extra_his = None
-            list_extra_his = []
             sample_nwp_id = nwp_id[sample_id]
             sample_nwp_data = nwp_data[sample_id] ### 6,63,101,101
             his_i = his[sample_id].unsqueeze(0)
@@ -1047,7 +1049,6 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
             # print(sample_nwp_id)
             
             for lead_time in range(int(sample_nwp_id)+1):
-                # print(sample_nwp_data[lead_time,:,:,:].unsqueeze(0).shape, self.cnn_embed)
                 embedding_x = self.cnn_embed(sample_nwp_data[lead_time,:,:,:].unsqueeze(0)) ### 1, 100,x
 
                 embedding_x = torch.cat([embedding_x, expaned_prompt_token], dim=-1) ### 1, 100, 768 , 

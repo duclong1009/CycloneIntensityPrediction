@@ -173,6 +173,11 @@ class CycloneDataset2(Dataset):
         return self.x_train.shape[0]
         
 class VITDataset6(Dataset):
+    """
+    For training prompt6 the item format is: 
+   
+        
+    """
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
         
@@ -223,16 +228,20 @@ class VITDataset6(Dataset):
 
         arr = self.x_train[idx]
 
+        ## Crop image to get data around the center, (51,51) is the center of the image
         if len(arr.shape) == 4:
-            arr = arr[-1,:,:self.image_size,:self.image_size]
+            arr = arr[-1,:,51 - self.image_size // 2: 51 + self.image_size // 2, 51 - self.image_size // 2: 51 + self.image_size // 2]
         elif len(arr.shape) == 3:
-            arr = arr[:,:self.image_size,:self.image_size]
-        
-
+            arr = arr[:, 51 - self.image_size // 2: 51 + self.image_size // 2, 51 - self.image_size // 2: 51 + self.image_size // 2]
+    
+        ## Get the groundtruth
         bt_wp = self.y_train[idx]
         bt_wp = bt_wp * 0.5
         
+        ## Fit the data
         arr, bt_wp = self.fit_data(arr,bt_wp)
+        
+        ## Get the history data
         his = self.his[idx]
         arr = [arr, his]
         return {"x": arr, "y": bt_wp}

@@ -14,6 +14,8 @@ import orca_model
 def get_option():
     parser = argparse.ArgumentParser()
     
+    ## data
+    
     ## CNN config
     parser.add_argument("--output_channels",type=int, default=128)
     parser.add_argument("--kernel_size", type=int,  default=3)
@@ -67,7 +69,6 @@ def get_option():
     parser.add_argument("--scheduler_type",type=str, default="steplr")
     ### promt setting
     parser.add_argument("--prompt_dims",type=int, default=128)
-    parser.add_argument("--image_size",type=int, default=100)
     ###
     parser.add_argument("--use_position_embedding", action="store_true", default=False)
 
@@ -78,6 +79,7 @@ def get_option():
     parser.add_argument("--freeze", action="store_true", default=False)
     
     parser.add_argument("--prompt_length", type=int, default=50)
+    parser.add_argument("--image_size", type=int, default=100, help="image size for the input image")
     
     # parser.add_argument("--input_channels",type=int, default=58)
     args = parser.parse_args()
@@ -141,7 +143,7 @@ if __name__ == "__main__":
     elif args.model_type == "prompt_vit3":
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
-        prediction_head = orca_model.PredictionHead()
+        prediction_head = orca_model.PredictionHead(n_patchs=(args.image_size // 10) ** 2 +1)
         
         train_model = orca_model.Prompt_Tuning_Model3(cnn_embedder, args.body_model_name, prediction_head,args)
         
@@ -202,7 +204,7 @@ if __name__ == "__main__":
     elif args.model_type == "prompt_vit6":
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
-        prediction_head = orca_model.PredictionHead(n_patchs=101)
+        prediction_head = orca_model.PredictionHead(n_patchs=(args.image_size // 10) ** 2 +1)
         
         train_model = orca_model.Prompt_Tuning_Model6(cnn_embedder, args.body_model_name, prediction_head,args)
         
@@ -246,7 +248,7 @@ if __name__ == "__main__":
         print("No. fts", n_fts[0])
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
-        prediction_head = orca_model.PredictionHead(n_patchs=101)
+        prediction_head = orca_model.PredictionHead(n_patchs=(args.image_size // 10) ** 2 +1)
         
         train_model = orca_model.Prompt_Tuning_Model6_Progressive(cnn_embedder, args.body_model_name, prediction_head,args)
         
@@ -260,7 +262,7 @@ if __name__ == "__main__":
         print("No. fts", n_fts[0])
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
-        prediction_head = orca_model.PredictionHead(n_patchs=101)
+        prediction_head = orca_model.PredictionHead(n_patchs= (args.image_size // 10) ** 2 +1)
         
         train_model = orca_model.Prompt_Tuning_Model6_Progressive2(cnn_embedder, args.body_model_name, prediction_head,args)
         
