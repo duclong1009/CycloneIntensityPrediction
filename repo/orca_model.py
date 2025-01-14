@@ -458,7 +458,6 @@ class Prompt_Tuning_Model5(nn.Module):
         return self.prediction_head(body_output)
 
 
-
 class Individual_Embeder_Tuning_Model1(nn.Module):
     def __init__(self, input_channels=58, body_model_name="vit", prediction_head=None, prompt_dim=128):
         super(Individual_Embeder_Tuning_Model1,self).__init__()
@@ -605,7 +604,6 @@ class Individual_Embeder_Tuning_Model3(nn.Module):
         return self.prediction_head(body_output)
 
 
-
 class Region_Attention(nn.Module):
     def __init__(self, input_channels=58, body_model_name="vit", prediction_head=None, args=None):
         super(Region_Attention,self).__init__()
@@ -690,7 +688,6 @@ class Region_Attention(nn.Module):
         return self.prediction_head(body_output)
 
 
-
 class Prompt_Tuning_Model_Leading_t(nn.Module):
     def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
         super(Prompt_Tuning_Model_Leading_t, self).__init__()
@@ -771,9 +768,6 @@ class PredictionHead2(nn.Module):
         return self.linear_head3(x)
     
 
-
-
-
 class Prompt_Tuning_Model7(nn.Module):
     def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
         super(Prompt_Tuning_Model7,self).__init__()
@@ -834,7 +828,6 @@ class Prompt_Tuning_Model7(nn.Module):
         # body_output = 
         return self.prediction_head(body_output)
 
- 
 class Prompt_Tuning_Model6(nn.Module):
     def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
         super(Prompt_Tuning_Model6,self).__init__()
@@ -891,11 +884,7 @@ class Prompt_Tuning_Model6(nn.Module):
         # body_output = 
         return self.prediction_head(body_output)
 
-
 import copy 
-
- 
-
 class Prompt_Tuning_Model6_Progressive(nn.Module):
     def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
         super(Prompt_Tuning_Model6_Progressive,self).__init__()
@@ -922,7 +911,7 @@ class Prompt_Tuning_Model6_Progressive(nn.Module):
         self.cnn_embed = cnn_embed
         self.linear = nn.Linear(64, 768)
         self.prediction_head = prediction_head
-        self.prompt_token = nn.Parameter(torch.randn(1, 100, prompt_dim)) 
+        self.prompt_token = nn.Parameter(torch.randn(1, (self.image_size // self.kernel_size) ** 2, prompt_dim)) 
         
         self.use_position_embedding = args.use_position_embedding
         
@@ -978,9 +967,6 @@ class Prompt_Tuning_Model6_Progressive(nn.Module):
             list_output.append(prediction_lead_tine)
         output = torch.concat(list_output,0)
         return output
-
-
-
 
 class Prompt_Tuning_Model6_Progressive2(nn.Module):
     def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
@@ -1069,4 +1055,3 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
             list_output.append(prediction_lead_tine)
         output = torch.concat(list_output,0)
         return output
-
