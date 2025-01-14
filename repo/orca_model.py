@@ -905,7 +905,10 @@ class Prompt_Tuning_Model6_Progressive(nn.Module):
         if args.freeze:
             for param in self.body_model.parameters():
                 param.requires_grad = False
-                
+        
+        self.image_size = args.image_size
+        self.kernel_size = 10
+        
         self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
 
         self.cnn_embed = cnn_embed
