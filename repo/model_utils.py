@@ -6,6 +6,7 @@ import wandb
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
 import pickle
+import json
 
 def seed_everything(seed: int):
 
@@ -438,7 +439,7 @@ def test_func(model, test_dataloader,criterion , args, besttrack_scaler,device):
     
     return list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_
 
-import json
+
 def fit_scalers_in_batches(args, batch_size=100):
     """
     Args:
@@ -455,7 +456,6 @@ def fit_scalers_in_batches(args, batch_size=100):
     bt_scaler = MinMaxScaler()
     
 
-    print("Process data by batch")
     if os.path.exists(f"{args.data_dir}/scaler/scaler.pkl"):
         print("Load scaler")
         with open(f"{args.data_dir}/scaler/x_shape.json", "r") as f:
