@@ -1,0 +1,2 @@
+python repo/main.py --model_type prompt_vit3  --batch_size 32 --lr 1e-5 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/shuffle_data/data1 --_use_wandb --group_name shuffle_data1 --seed 79 --body_model_name vit --image_size 50
+python repo/main.py --model_type prompt_vit3  --batch_size 32 --lr 1e-5 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/shuffle_data/data2 --_use_wandb --group_name shuffle_data2 --seed 79 --body_model_name vit --image_size 50
