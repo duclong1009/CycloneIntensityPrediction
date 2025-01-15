@@ -143,7 +143,7 @@ if __name__ == "__main__":
     elif args.model_type == "prompt_vit3":
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
-        prediction_head = orca_model.PredictionHead(n_patchs=(args.image_size // 10) ** 2 +1)
+        prediction_head = orca_model.PredictionHead(n_patchs=(args.image_size // 10) ** 2 )
         
         train_model = orca_model.Prompt_Tuning_Model3(cnn_embedder, args.body_model_name, prediction_head,args)
         
