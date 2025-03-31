@@ -328,6 +328,97 @@ class VITDataset6_2(Dataset):
     def __len__(self):
         return self.x_train.shape[0]
         
+
+
+
+
+class VITDataset6_4(Dataset):
+    """
+    For training prompt6 the item format is: 
+        - arr: nwp data
+    """
+    def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
+        super().__init__()
+        
+        self.features = args.list_features        
+            
+        self.arr = np.load(data_dir)
+
+        self.x_train, self.y_train, self.his, self.nwp_id = self.arr['x_arr'], self.arr['groundtruth'], self.arr['his'], self.arr['leading_time']
+        
+        if self.features is not None:
+            self.x_train = self.x_train[:,self.features, :,:]
+            
+        self.besttrack_scaler_path = besttrack_scaler_path
+        self.nwp_scaler_path = nwp_scaler_path
+        
+        self.nwp_scaler = nwp_scaler
+        self.bt_scaler = bt_scaler
+        
+        self.mode=  mode
+        self.args = args
+        self.image_size = args.image_size
+
+    def fit_data(self,arr,y):
+        # breakpoint()
+        arr_shape = arr.shape
+        if len(arr_shape) == 4:
+            # print(arr_shape)
+            reshaped_arr = arr.transpose((0,2,3,1))
+            reshaped_arr = reshaped_arr.reshape((reshaped_arr.shape[0] * reshaped_arr.shape[1] * reshaped_arr.shape[2], -1))
+            reshaped_arr =  self.nwp_scaler.transform(reshaped_arr)
+            reshaped_arr = reshaped_arr.reshape(arr_shape[0],arr_shape[2], arr_shape[3], arr_shape[1])
+            reshaped_arr = reshaped_arr.transpose(0,3,1,2)
+
+        elif len(arr_shape) == 3:
+            reshaped_arr = arr.transpose((1,2,0))
+            
+            reshaped_arr = reshaped_arr.reshape((reshaped_arr.shape[0] * reshaped_arr.shape[1], -1))
+            
+            # self.bt_scaler.fit(y)
+            reshaped_arr =  self.nwp_scaler.transform(reshaped_arr)
+            reshaped_arr = reshaped_arr.reshape(arr_shape[1],arr_shape[2], arr_shape[0])
+            reshaped_arr = reshaped_arr.transpose(2,0,1)
+
+        if self.args.transform_groundtruth:
+            y = np.expand_dims(np.array(y),0).reshape((1,1))
+            y = self.bt_scaler.transform(y)
+        # y = self.besttrack_scaler.transform(y)
+        return reshaped_arr, y
+
+    def __getitem__(self,idx):
+        """
+        x_train: [400,4,63,101,101] / [400,63,101,101]
+        """
+
+        arr = self.x_train[idx]
+        his = self.his[idx]
+        nwp_id = self.nwp_id[idx]
+        
+        arr = arr[nwp_id]
+        
+        if len(arr.shape) == 4:
+            arr = arr[:,:,:self.image_size,:self.image_size]
+        elif len(arr.shape) == 3:
+            arr = arr[:,:self.image_size,:self.image_size]
+        
+
+        bt_wp = self.y_train[idx]
+        bt_wp = bt_wp * 0.5
+        
+        arr, bt_wp = self.fit_data(arr,bt_wp)
+        
+        arr = [arr, his, nwp_id]
+        return {"x": arr, "y": bt_wp}
+
+    def __len__(self):
+        return self.x_train.shape[0]
+        
+
+
+
+
+    
 class CycloneDataset3(Dataset):
     def __init__(self,data_dir ="cutted_data/train", mode="train", args=None, scaler=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()

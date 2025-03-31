@@ -21,7 +21,7 @@ seed_everything(seed)
 
 # data_dir = "data69/cropped_data"
 # /home/user01/aiotlab/longnd/cyclone_prediction/CycloneIntensityPrediction/script/data_his4prediction/data13/cnn.sh
-data_dir = "../raw_data/data_his4prediction/data13"
+data_dir = "../raw_data/basedyear_data/data7"
 
 
 

@@ -12,3 +12,5 @@ python repo/main.py --model_type prompt_vit3  --batch_size 32 --lr 1e-5 --epochs
 ## Baseline 
 python repo/main.py --model_type cnn  --batch_size 32 --lr 1e-5 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/basedyear_data_24h/data5 --_use_wandb --group_name basedyear_data_24h5 --seed 79
 python repo/main.py --model_type convlstm1  --batch_size 32 --lr 1e-5 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/basedyear_data_24h/data5 --_use_wandb --group_name basedyear_data_24h5 --seed 79
+
+
