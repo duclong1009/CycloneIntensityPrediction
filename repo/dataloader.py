@@ -4,7 +4,7 @@ import numpy as np
 import os 
 from sklearn.preprocessing import MinMaxScaler
 import pickle
-
+import torch
 class CycloneDataset(Dataset):
     def __init__(self,file_path ="file_index.csv", mode="train", args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
@@ -346,6 +346,10 @@ class VITDataset6_4(Dataset):
 
         self.x_train, self.y_train, self.his, self.nwp_id = self.arr['x_arr'], self.arr['groundtruth'], self.arr['his'], self.arr['leading_time']
         
+        hres_data= np.load(f"{args.data_dir}/{mode}/hres_info.npz")
+        self.hres_info = hres_data['hres_info']
+        self.checked_list = hres_data['checked']
+        
         if self.features is not None:
             self.x_train = self.x_train[:,self.features, :,:]
             
@@ -361,6 +365,7 @@ class VITDataset6_4(Dataset):
 
     def fit_data(self,arr,y):
         # breakpoint()
+        
         arr_shape = arr.shape
         if len(arr_shape) == 4:
             # print(arr_shape)
@@ -390,10 +395,11 @@ class VITDataset6_4(Dataset):
         """
         x_train: [400,4,63,101,101] / [400,63,101,101]
         """
-
+        checked = self.checked_list[idx]
         arr = self.x_train[idx]
         his = self.his[idx]
         nwp_id = self.nwp_id[idx]
+        hres_info = self.hres_info
         
         arr = arr[nwp_id]
         
@@ -415,6 +421,114 @@ class VITDataset6_4(Dataset):
         return self.x_train.shape[0]
         
 
+class VITDataset6_5(Dataset):
+    def __init__(self, data_dir="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler=None, args=None, 
+                 besttrack_scaler_path="output/scaler/besttrackscaler.pkl", nwp_scaler_path="output/scaler/nwpscaler.pkl"):
+        super().__init__()
+        
+        self.features = args.list_features        
+        self.arr = np.load(data_dir)
+
+        self.x_train, self.y_train, self.his, self.nwp_id = self.arr['x_arr'], self.arr['groundtruth'], self.arr['his'], self.arr['leading_time']
+        
+        hres_data = np.load(f"{args.data_dir}/{mode}/hres_info.npz")
+        self.hres_info = hres_data['hres_info']
+        self.checked_list = hres_data['checked']
+        
+        # Filter indices where checked is 1
+        valid_indices = np.where(self.checked_list == 1)[0]
+        
+        print(f"Data {mode}: No. sample{len(self.y_train)} No. valid sample {len(valid_indices)}")
+        self.valid_indices = valid_indices
+        self.x_train = self.x_train[valid_indices]
+        self.y_train = self.y_train[valid_indices]
+        self.his = self.his[valid_indices]
+        self.nwp_id = self.nwp_id[valid_indices]
+        self.checked_list = self.checked_list[valid_indices]  # Update checked_list to only valid samples
+
+        if self.features is not None:
+            self.x_train = self.x_train[:, self.features, :, :]
+
+        self.besttrack_scaler_path = besttrack_scaler_path
+        self.nwp_scaler_path = nwp_scaler_path
+        
+        self.nwp_scaler = nwp_scaler 
+        self.bt_scaler = bt_scaler 
+        
+        self.mode = mode
+        self.args = args
+        self.image_size = args.image_size
+
+        # Determine max sequence length for padding (assuming arr has variable sequence length)
+        self.max_seq_len = max([nwp_id for x, nwp_id in zip(self.x_train, self.nwp_id)])
+
+    def fit_data(self, arr, y):
+        arr_shape = arr.shape
+        if len(arr_shape) == 4:  # [seq_len, n_fts, height, width]
+            # Transpose and reshape for scaling
+            reshaped_arr = arr.transpose((0, 2, 3, 1))  # [seq_len, height, width, n_fts]
+            reshaped_arr = reshaped_arr.reshape((-1, arr_shape[1]))  # Flatten spatial and feature dims
+            reshaped_arr = self.nwp_scaler.transform(reshaped_arr)
+            reshaped_arr = reshaped_arr.reshape(arr_shape[0], arr_shape[2], arr_shape[3], arr_shape[1])
+            reshaped_arr = reshaped_arr.transpose(0, 3, 1, 2)  # Back to [seq_len, n_fts, height, width]
+
+        elif len(arr_shape) == 3:  # [n_fts, height, width] or similar
+            reshaped_arr = arr.transpose((1, 2, 0))
+            reshaped_arr = reshaped_arr.reshape((-1, arr_shape[0]))
+            reshaped_arr = self.nwp_scaler.transform(reshaped_arr)
+            reshaped_arr = reshaped_arr.reshape(arr_shape[1], arr_shape[2], arr_shape[0])
+            reshaped_arr = reshaped_arr.transpose(2, 0, 1)
+
+        if self.args.transform_groundtruth:
+            y = np.expand_dims(np.array(y), 0).reshape((1, 1))
+            y = self.bt_scaler.transform(y)
+
+        return reshaped_arr, y
+
+    def __getitem__(self, idx):
+        """
+        Only processes samples where checked is 1 (already filtered in __init__)
+        """
+        arr = self.x_train[idx]
+        his = self.his[idx]
+        nwp_id = self.nwp_id[idx]
+        hres_info = self.hres_info[idx]
+
+        # Subset by nwp_id and resize
+        arr = arr[nwp_id]
+
+        if len(arr.shape) == 4:  # [seq_len, n_fts, height, width]
+            seq_len = arr.shape[0]  # Get actual sequence length
+            arr = arr[:, :, :self.image_size, :self.image_size]
+        elif len(arr.shape) == 3:  # [n_fts, height, width]
+            seq_len = 1  # No sequence dimension, treat as single frame
+            arr = arr[:, :self.image_size, :self.image_size]
+
+        bt_wp = self.y_train[idx] * 0.5
+
+        # Scale data
+        arr, bt_wp = self.fit_data(arr, bt_wp)
+
+        # Pad arr to max_seq_len if it's a sequence
+        if len(arr.shape) == 4:  # Sequence data
+            padding_size = self.max_seq_len - seq_len
+            if padding_size > 0:
+                padding = np.zeros((padding_size, arr.shape[1], arr.shape[2], arr.shape[3]))
+                arr = np.concatenate([arr, padding], axis=0)
+
+
+        # Convert to torch tensor and return with length
+        # arr = torch.from_numpy(arr).float()
+        # his = torch.from_numpy(his).float() 
+        # nwp_id = torch.tensor(nwp_id).long()
+        
+        # hres_info = torch.from_numpy(hres_info).float()
+        
+        
+        return {"x": [arr, his, nwp_id, hres_info], "y": bt_wp, }
+
+    def __len__(self):
+        return len(self.valid_indices)  # Updated to reflect filtered size
 
 
 
@@ -641,8 +755,7 @@ class VITDatasetSLW6(Dataset):
 
     def __len__(self):
         return self.x_train.shape[0]
-              
-class ClusterDataset(Dataset):
+ 
     def __init__(self,data_dir ="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler = None, args=None ,besttrack_scaler_path="output/scaler/besttrackscaler.pkl",nwp_scaler_path="output/scaler/nwpscaler.pkl", ):
         super().__init__()
         

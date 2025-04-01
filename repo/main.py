@@ -66,7 +66,7 @@ def get_option():
     
     ## scheduler
     parser.add_argument("--_use_scheduler_lr",action="store_true", default=False)
-    parser.add_argument("--scheduler_type",type=str, default="steplr")
+    parser.add_argument("--scheduler_type",type=str, default="reducelronplateau")
     ### promt setting
     parser.add_argument("--prompt_dims",type=int, default=128)
     ###
@@ -209,7 +209,7 @@ if __name__ == "__main__":
         prediction_head = orca_model.PredictionHead(n_patchs=(args.image_size // 10) ** 2 +1)
         
         train_model = orca_model.Prompt_Tuning_Model6(cnn_embedder, args.body_model_name, prediction_head,args)
-        
+        # train_model = train_model.to(device)
         args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-pse_{args.use_position_embedding}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset6(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
@@ -312,6 +312,19 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset6_4(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_4(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_4(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    
+    elif args.model_type == "prompt_vit6_5":
+        print("No. fts", n_fts[0])
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
+        
+        prediction_head = orca_model.PredictionHead(n_patchs= (args.image_size // 10) ** 2 +2)
+        print(args)
+        train_model = orca_model.Prompt_Tuning_Model6_5(cnn_embedder, args.body_model_name, prediction_head,args)
+        
+        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         
     # args.name = "test"
 
@@ -371,7 +384,6 @@ if __name__ == "__main__":
     # dataset = dataloader
     list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
     
-    ### 
     #### Model testing 
     model_utils.load_model(train_model, f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt")
     

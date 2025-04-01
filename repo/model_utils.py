@@ -119,7 +119,7 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
         if args.scheduler_type == "steplr":
             scheduler = StepLR(optimizer, step_size=5, gamma=0.1)  # Adjust step_size and gamma as needed
         elif args.scheduler_type == 'reducelronplateau':
-            scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+            scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=4, verbose=True)
         else:
             raise ValueError("scheduler")
         
@@ -158,6 +158,7 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
 
             # Step the scheduler every epoch
             if args._use_scheduler_lr:
+                current_lr = optimizer.param_groups[0]['lr']
                 if args.scheduler_type == "steplr":
                     scheduler.step()
                 elif args.scheduler_type == "reducelronplateau":
@@ -165,14 +166,15 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
                 else:
                     pass
 
+            
             print(f"Training epoch {epoch} Train loss: {train_epoch_loss} Valid loss: {valid_epoch_loss}")
             if args._use_wandb:
-                wandb.log({"loss/train_loss": train_epoch_loss,
-                           "loss/valid_loss": valid_epoch_loss})
+                wandb.log({"epoch": epoch,
+                            "loss/train_loss": train_epoch_loss,
+                            "loss/valid_loss": valid_epoch_loss,
+                            "learning_rate": current_lr})
 
     return list_train_loss, list_valid_loss
-
-
 
 def train_multioutput_func(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
     model.train()
@@ -397,9 +399,6 @@ from sklearn.metrics import (
     mean_absolute_error,
 )
 
-# def mdape(y_true, y_pred):
-# 	return np.median((np.abs(np.subtract(y_true, y_pred)/ y_true))) * 100
-
 def cal_acc(y_prd, y_grt):
     mae = mean_absolute_error(y_grt, y_prd)
     mse = mean_squared_error(y_grt, y_prd, squared=True)
@@ -410,8 +409,7 @@ def cal_acc(y_prd, y_grt):
     # mdape_ = mdape(y_grt,y_prd)
     return mae, mse, mape, rmse, r2, corr
 
-
-def test_func(model, test_dataloader,criterion , args, besttrack_scaler,device):
+def test_func(model, test_dataloader, criterion, args, besttrack_scaler, device):
     model.eval() 
     list_prd = []
     list_grt = []
@@ -420,24 +418,33 @@ def test_func(model, test_dataloader,criterion , args, besttrack_scaler,device):
     
     with torch.no_grad():
         for data in test_dataloader:
-            x_train, y_grt = to_float(data['x'], device), to_float(data['y'],device)
+            x_train, y_grt = to_float(data['x'], device), to_float(data['y'], device)
             y_prd = model(x_train)
             batch_loss = criterion(torch.squeeze(y_prd), torch.squeeze(y_grt))
             y_prd = y_prd.cpu().detach().numpy()
             y_grt = y_grt.cpu().detach().numpy()
+            
             if args.transform_groundtruth:
+                # Handle single sample case
+                if y_prd.shape[0] == 1:
+                    y_prd = y_prd.reshape(1, -1)  # Ensure 2D shape for single sample
+                    y_grt = y_grt.reshape(1, -1)
+                
                 y_prd = besttrack_scaler.inverse_transform(y_prd)
-                y_grt = y_grt.reshape((y_grt.shape[0],1))
                 y_grt = besttrack_scaler.inverse_transform(y_grt)
             
-            y_prd = np.squeeze(y_prd).tolist()
-            y_grt = np.squeeze(y_grt).tolist()
-            list_prd += y_prd
-            list_grt += y_grt
+            # Handle last batch with single sample
+            if y_prd.shape[0] == 1:
+                list_prd.append(float(np.squeeze(y_prd)))
+                list_grt.append(float(np.squeeze(y_grt)))
+            else:
+                list_prd.extend(np.squeeze(y_prd).tolist())
+                list_grt.extend(np.squeeze(y_grt).tolist())
+                
             epoch_loss += batch_loss.item()
+    print(sum(list_prd), sum(list_grt))
     mae, mse, mape, rmse, r2, corr_ = cal_acc(list_prd, list_grt)
-    
-    return list_prd, list_grt, epoch_loss, mae, mse, mape, rmse, r2, corr_
+    return mae, mse, mape, rmse, r2, corr_, epoch_loss
 
 
 def fit_scalers_in_batches(args, batch_size=100):
@@ -515,7 +522,6 @@ def fit_scalers_in_batches(args, batch_size=100):
             x_shape = json.dump(x_shape,f)
     print("Preprocess Done!!!")
     return scaler, bt_scaler, n_fts
-
 
 def get_scaler():
     data_dir_train = "cutted_data/train/train_data.npz"
@@ -643,8 +649,6 @@ def train_func2(model, train_dataset, valid_dataset, early_stopping, loss_func, 
                            "loss/valid_loss": valid_epoch_loss})
 
     return list_train_loss, list_valid_loss
-
-
 
 def test_func2(model, test_dataloader,criterion , args, besttrack_scaler,device):
     model.eval() 

@@ -1059,11 +1059,16 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
         output = torch.concat(list_output,0)
         return output
     
+    
+    
+import torch
+import torch.nn as nn
+import copy
+from transformers import ViTModel, ViTConfig
 
-
-class Prompt_Tuning_Model6_4(nn.Module):
-    def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
-        super(Prompt_Tuning_Model6_4,self).__init__()
+class Prompt_Tuning_Model6_5(nn.Module):
+    def __init__(self, cnn_embed, body_model_name="vit", prediction_head=None, args=None):
+        super(Prompt_Tuning_Model6_5, self).__init__()
         
         self.use_position_embedding = args.use_position_embedding
         self.image_size = args.image_size
@@ -1072,12 +1077,12 @@ class Prompt_Tuning_Model6_4(nn.Module):
         prompt_dim = args.prompt_dims
         if body_model_name == 'vit':
             model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
-            self.body_model =  copy.deepcopy(model.encoder)
+            self.body_model = copy.deepcopy(model.encoder)
 
         elif body_model_name == 'scratch_vit':
             config = ViTConfig()  # Use default configuration or modify as needed   
             model = ViTModel(config)
-            self.body_model =  copy.deepcopy(model.encoder)
+            self.body_model = copy.deepcopy(model.encoder)
 
         else:
             raise ValueError("Not correct body model name")
@@ -1099,149 +1104,103 @@ class Prompt_Tuning_Model6_4(nn.Module):
         if self.use_position_embedding:
             emb_size = 768
             self.positions = nn.Parameter(torch.randn((self.image_size // self.kernel_size) ** 2, emb_size))
-        self.delta_t = nn.Parameter(torch.rand((self.max_lead_time - self.start_lead_time +1), 768))
+        self.delta_t = nn.Parameter(torch.rand((self.max_lead_time - self.start_lead_time + 1), 768))
         self.n_patches = (self.image_size // self.kernel_size) ** 2
         
+        # Replace GRU with Transformer for hres_info
+        self.hres_real_len = 4  # Real data length for hres_info
+        self.hres_padded_len = 10  # Padded length for hres_info
+        self.transform_hres = nn.Linear(4,768)
+        
+        self.transformer = nn.TransformerEncoder(
+            nn.TransformerEncoderLayer(
+                d_model=768,  # Input dimension for hres_info (matches your 4 features)
+                nhead=2,    # Number of attention heads
+                dim_feedforward=768,  # Feedforward dimension
+                dropout=0.1,
+                batch_first=True
+            ),
+            num_layers=2  # Number of Transformer layers
+        )
+        
+        # Update layernorm to account for Transformer output (assuming output dim is still 768 for consistency)
+        # self.layernorm = nn.LayerNorm((768 + 768,), eps=1e-12, elementwise_affine=True)  # Adjusted for Transformer output
+
     def add_delta_t(self, arr, lead_time):
-        # batch_sze, _, _ = arr.shape
         list_lead = []
-    
         for lt in lead_time:
             lt = lt - self.start_lead_time
             corress_prompt = self.delta_t[int(lt)]
-        list_lead.append(corress_prompt)
+            list_lead.append(corress_prompt)
         add_prompt = torch.stack(list_lead, 0)
-        add_prompt = add_prompt.unsqueeze(1).repeat(1,self.n_patches,1)
+        add_prompt = add_prompt.unsqueeze(1).repeat(1, self.n_patches, 1)
         return arr + add_prompt
-    
-    def forward(self,x):
-        ### adding promt token at the begin of body model
-        
+
+    def get_hres_mask(self, hres_info, nwp_id):
+        device = next(self.parameters()).device
+        hres_padding_mask = torch.zeros((hres_info.shape[0], hres_info.shape[1]))
+        for i, lead_time in enumerate(nwp_id):
+            # Set 1s for valid positions (up to lead_time)
+            # Set 0s for padding positions (after lead_time)
+            hres_padding_mask[i, :int(lead_time)] = 1
+        return hres_padding_mask.to(device)
+
+    def get_hres_embedding(self, embeddings, nwp_id):
+        list_embeddings = []
+        batch_size = embeddings.shape[0]
+        for i in range(batch_size):
+            sample_nwp_id = nwp_id[i]
+            list_embeddings.append(embeddings[i,int(sample_nwp_id), :])
+
+        return torch.stack(list_embeddings, 0)
+    # def get_mask
+    def forward(self, x):
         """
-        format for x: [nwp_data, his, nwp_id]
-        nwp_data.shape [32,5, 63,100,100]]
+        format for x: [nwp_data, his, nwp_id, hres_info]
+        nwp_data.shape [batch_size, seq_len, 63, 100, 100]
+        hres_info.shape [batch_size, hres_padded_len, 4] (e.g., [32, 10, 4])
         """
         
         batch_size = x[0].shape[0]
-        nwp_data = x[0]
-        
+        nwp_data = x[0]  # [batch_size, seq_len, n_fts, height, width]
         his = x[1]
-        nwp_id = x[2] ## Leadtime
+        nwp_id = x[2]
+        hres_info = x[3]  # [batch_size, hres_padded_len, 4]  
+        hres_embedding = self.transform_hres(hres_info)
+        # Process hres_info through Transformer with masking
+        # Create padding mask (1 for real, 0 for padding)
+        hres_padding_mask = self.get_hres_mask(hres_info, nwp_id)
+        # For transformer: True means ignore/mask this position
+        # So we need to invert the mask (~ operator)
+        # 1 -> False (attend to this position)
+        # 0 -> True (ignore this position)
+        hres_output = self.transformer(hres_embedding, 
+                                     src_key_padding_mask=~hres_padding_mask.bool())
+        
+        hres_last = self.get_hres_embedding(hres_output, nwp_id)
 
-        list_output = []
-        expaned_prompt_token = self.prompt_token.unsqueeze(1)
+        # Process nwp_data as before
+        expanded_prompt_token = self.prompt_token.unsqueeze(1)
+        expanded_prompt_token = expanded_prompt_token.repeat(batch_size, self.n_patches, 1)
         
-        expaned_prompt_token = expaned_prompt_token.repeat(batch_size, (self.image_size // self.kernel_size) ** 2,1)
-        
-        embedding_x = self.cnn_embed(nwp_data) ## 1 x 100 x D
-        # print(embedding_x.shape, expaned_prompt_token.shape)
-        embedding_x = torch.cat([embedding_x, expaned_prompt_token], dim=-1) ### 1, 100, 768 , 
+        embedding_x = self.cnn_embed(nwp_data)
+        embedding_x = torch.cat([embedding_x, expanded_prompt_token], dim=-1)
         
         embedding_x = self.add_delta_t(embedding_x, nwp_id)
         
         if self.use_position_embedding:
             embedding_x += self.positions
-        body_output=  self.body_model(embedding_x)
+            
+        body_output = self.body_model(embedding_x)
         body_output = body_output.last_hidden_state
+        body_output = body_output.view(batch_size, -1)
+        
         his_embed = self.linear(his)
         
-        body_output = torch.cat([embedding_x, his_embed[:, None, :]], 1)
-        body_output = self.layernorm(body_output)
-        # body_output = self.add_delta_t(body_output, nwp_id)
+        # Concatenate Transformer output with other features
+        body_output = torch.cat([body_output, his_embed, hres_last], dim=-1)
         
-        prediction_lead_tine = self.prediction_head(body_output)
-        return prediction_lead_tine
-
-    
-    
-
-
-class Prompt_Tuning_Model6_WO_Prompt(nn.Module):
-    def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
-        super(Prompt_Tuning_Model6_WO_Prompt,self).__init__()
+        # body_output = self.layernorm(body_output)
+        prediction_lead_time = self.prediction_head(body_output)
         
-        prompt_dim = args.prompt_dims
-        if body_model_name == 'vit':
-            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
-            self.body_model =  copy.deepcopy(model.encoder)
-
-        elif body_model_name == 'scratch_vit':
-            config = ViTConfig()  # Use default configuration or modify as needed   
-            model = ViTModel(config)
-            self.body_model =  copy.deepcopy(model.encoder)
-
-        else:
-            raise ValueError("Not correct body model name")
-        
-        if args.freeze:
-            for param in self.body_model.parameters():
-                param.requires_grad = False
-                
-        self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
-
-        self.cnn_embed = cnn_embed
-        self.linear = nn.Linear(64, 768)
-        self.prediction_head = prediction_head
-        
-        self.use_position_embedding = args.use_position_embedding
-        self.image_size = args.image_size
-        self.kernel_size = 10
-        
-        
-        if self.use_position_embedding:
-            emb_size = 768
-            self.positions = nn.Parameter(torch.randn((self.image_size // self.kernel_size) ** 2, emb_size))
-
-
-    def forward(self,x):
-        ### adding promt token at the begin of body model
-        
-        """
-        format for x: [nwp_data, his, nwp_id]
-        nwp_data.shape [32,5, 63,100,100]]
-
-        """
-        
-        batch_size = x[0].shape[0]
-        nwp_data = x[0]
-        his = x[1]
-        nwp_id = x[2]
-
-        
-        # prompt_token_expanded = self.prompt_token.expand(batch_size, )  # Expand prompt token to batch 
-
-        list_output = []
-
-        for sample_id in range(batch_size):
-            sample_nwp_id = nwp_id[sample_id]
-            sample_nwp_data = nwp_data[sample_id] ### 6,63,101,101
-            his_i = his[sample_id].unsqueeze(0)
-            current_his = his_i
-            # print(sample_nwp_id)
-            
-            for lead_time in range(int(sample_nwp_id)+1):
-                embedding_x = self.cnn_embed(sample_nwp_data[lead_time,:,:,:].unsqueeze(0)) ### 1, 100,x
-
-                # embedding_x = torch.cat([embedding_x, expaned_prompt_token], dim=-1) ### 1, 100, 768 , 
-                if self.use_position_embedding:
-                    embedding_x += self.positions
-                body_output=  self.body_model(embedding_x)
-                body_output = body_output.last_hidden_state
-                
-                his_embed = self.linear(current_his) #768
-
-                body_output = torch.cat([body_output, his_embed[:, None, :]], 1)
-                body_output = self.layernorm(body_output)
-                prediction_lead_tine = self.prediction_head(body_output)
-             
-
-                current_his = torch.concat([current_his, prediction_lead_tine], -1)[:,-64:]
-            
-            list_output.append(prediction_lead_tine)
-        output = torch.concat(list_output,0)
-        return output
-    
-    
-    
-    
-    
+        return prediction_lead_time
