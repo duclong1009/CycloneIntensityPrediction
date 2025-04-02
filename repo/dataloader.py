@@ -419,8 +419,8 @@ class VITDataset6_4(Dataset):
 
     def __len__(self):
         return self.x_train.shape[0]
-        
-
+    
+    
 class VITDataset6_5(Dataset):
     def __init__(self, data_dir="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler=None, args=None, 
                  besttrack_scaler_path="output/scaler/besttrackscaler.pkl", nwp_scaler_path="output/scaler/nwpscaler.pkl"):
@@ -445,7 +445,7 @@ class VITDataset6_5(Dataset):
         self.his = self.his[valid_indices]
         self.nwp_id = self.nwp_id[valid_indices]
         self.checked_list = self.checked_list[valid_indices]  # Update checked_list to only valid samples
-
+        self.check_data_values()
         if self.features is not None:
             self.x_train = self.x_train[:, self.features, :, :]
 
@@ -461,6 +461,53 @@ class VITDataset6_5(Dataset):
 
         # Determine max sequence length for padding (assuming arr has variable sequence length)
         self.max_seq_len = max([nwp_id for x, nwp_id in zip(self.x_train, self.nwp_id)])
+    
+    def check_data_values(self):
+        """Check for NaN, inf and print basic stats for all data arrays"""
+        print("\nChecking data arrays for NaN/inf values and stats:")
+        
+        # Check x_train
+        print("\nx_train:")
+        print(f"Shape: {self.x_train.shape}")
+        print(f"NaN count: {np.isnan(self.x_train).sum()}")
+        print(f"Inf count: {np.isinf(self.x_train).sum()}")
+        print(f"Min: {np.min(self.x_train)}, Max: {np.max(self.x_train)}")
+        
+        # Check y_train
+        print("\ny_train:")
+        print(f"Shape: {self.y_train.shape}")
+        print(f"NaN count: {np.isnan(self.y_train).sum()}")
+        print(f"Inf count: {np.isinf(self.y_train).sum()}")
+        print(f"Min: {np.min(self.y_train)}, Max: {np.max(self.y_train)}")
+        
+        # Check his
+        print("\nhis:")
+        print(f"Shape: {self.his.shape}")
+        print(f"NaN count: {np.isnan(self.his).sum()}")
+        print(f"Inf count: {np.isinf(self.his).sum()}")
+        print(f"Min: {np.min(self.his)}, Max: {np.max(self.his)}")
+        
+        # Check nwp_id
+        print("\nnwp_id:")
+        print(f"Shape: {self.nwp_id.shape}")
+        print(f"NaN count: {np.isnan(self.nwp_id).sum()}")
+        print(f"Inf count: {np.isinf(self.nwp_id).sum()}")
+        print(f"Min: {np.min(self.nwp_id)}, Max: {np.max(self.nwp_id)}")
+        
+        # Check hres_info
+        print("\nhres_info:")
+        print(f"Shape: {self.hres_info.shape}")
+        print(f"NaN count: {np.isnan(self.hres_info).sum()}")
+        print(f"Inf count: {np.isinf(self.hres_info).sum()}")
+        print(f"Min: {np.min(self.hres_info)}, Max: {np.max(self.hres_info)}")
+        
+        # Check checked_list
+        print("\nchecked_list:")
+        print(f"Shape: {self.checked_list.shape}")
+        print(f"NaN count: {np.isnan(self.checked_list).sum()}")
+        print(f"Inf count: {np.isinf(self.checked_list).sum()}")
+        print(f"Min: {np.min(self.checked_list)}, Max: {np.max(self.checked_list)}")
+        print(f"Unique values: {np.unique(self.checked_list, return_counts=True)}")
 
     def fit_data(self, arr, y):
         arr_shape = arr.shape

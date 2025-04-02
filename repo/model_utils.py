@@ -169,11 +169,15 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
             
             print(f"Training epoch {epoch} Train loss: {train_epoch_loss} Valid loss: {valid_epoch_loss}")
             if args._use_wandb:
-                wandb.log({"epoch": epoch,
-                            "loss/train_loss": train_epoch_loss,
-                            "loss/valid_loss": valid_epoch_loss,
-                            "learning_rate": current_lr})
-
+                if args._use_scheduler_lr:
+                    wandb.log({"epoch": epoch,
+                                "loss/train_loss": train_epoch_loss,
+                                "loss/valid_loss": valid_epoch_loss,
+                                "learning_rate": current_lr})
+                else:
+                    wandb.log({"epoch": epoch,
+                                "loss/train_loss": train_epoch_loss,
+                                "loss/valid_loss": valid_epoch_loss})
     return list_train_loss, list_valid_loss
 
 def train_multioutput_func(model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device):
@@ -444,7 +448,7 @@ def test_func(model, test_dataloader, criterion, args, besttrack_scaler, device)
             epoch_loss += batch_loss.item()
     print(sum(list_prd), sum(list_grt))
     mae, mse, mape, rmse, r2, corr_ = cal_acc(list_prd, list_grt)
-    return mae, mse, mape, rmse, r2, corr_, epoch_loss
+    return list_prd,list_grt,epoch_loss, mae, mse, mape, rmse, r2, corr_
 
 
 def fit_scalers_in_batches(args, batch_size=100):
