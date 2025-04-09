@@ -1183,6 +1183,7 @@ class Prompt_Tuning_Model6_5(nn.Module):
     def __init__(self, cnn_embed, body_model_name="vit", prediction_head=None, args=None):
         super(Prompt_Tuning_Model6_5, self).__init__()
         
+        self.args = args
         self.use_position_embedding = args.use_position_embedding
         self.image_size = args.image_size
         self.kernel_size = 10
@@ -1209,14 +1210,11 @@ class Prompt_Tuning_Model6_5(nn.Module):
         self.cnn_embed = cnn_embed
         self.linear = nn.Linear(64, 768)
         self.prediction_head = prediction_head
-        self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+        self.prompt_type = args.prompt_type
         
         self.max_lead_time = args.max_lead_time
         self.start_lead_time = args.start_lead_time
         
-        if self.use_position_embedding:
-            emb_size = 768
-            self.positions = nn.Parameter(torch.randn((self.image_size // self.kernel_size) ** 2, emb_size))
         self.delta_t = nn.Parameter(torch.rand((self.max_lead_time - self.start_lead_time + 1), 768))
         self.n_patches = (self.image_size // self.kernel_size) ** 2
         
@@ -1227,11 +1225,34 @@ class Prompt_Tuning_Model6_5(nn.Module):
         
         # Use GRU instead of Transformer
         self.gru = nn.GRU(input_size=768, hidden_size=768, num_layers=2, batch_first=True, dropout=0.1)
-
-    def add_prompt(self,):
-        pass
+        
+        ## Init prompt
+        if self.prompt_type ==0:
+            self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+        elif self.prompt_type == 1:
+            self.prompt_token = nn.Parameter(torch.randn(self.n_patches, prompt_dim))
+        
+        if self.use_position_embedding:
+            emb_size = 768
+            self.positions = nn.Parameter(torch.randn(1, self.n_patches, emb_size))
         
         
+    def add_prompt(self,embeddings):
+        """
+        embeddings shape: [batch size, n_patches, hidden_dim]
+        
+        """
+        batch_size = embeddings.shape[0]
+        if self.prompt_type == 0:
+            expanded_prompt_token = self.prompt_token.unsqueeze(0)
+            expanded_prompt_token = expanded_prompt_token.repeat(batch_size, self.n_patches, 1)
+        
+        elif self.prompt_type == 1:
+            expanded_prompt_token = self.prompt_token.unsqueeze(0)
+            expanded_prompt_token = expanded_prompt_token.repeat(batch_size, 1, 1)
+        # print(f"Shape : {embeddings.shape}, {expanded_prompt_token.shape}")
+        return torch.cat([embeddings, expanded_prompt_token], dim=-1)
+    
     def add_delta_t(self, arr, lead_time):
         list_lead = []
         for lt in lead_time:
@@ -1287,12 +1308,9 @@ class Prompt_Tuning_Model6_5(nn.Module):
         
         hres_last = self.get_hres_embedding(hres_output, nwp_id, hres_padding_mask)
 
-        # Process nwp_data as before
-        expanded_prompt_token = self.prompt_token.unsqueeze(1)
-        expanded_prompt_token = expanded_prompt_token.repeat(batch_size, self.n_patches, 1)
-        
+        # Process nwp_data 
         embedding_x = self.cnn_embed(nwp_data)
-        embedding_x = torch.cat([embedding_x, expanded_prompt_token], dim=-1)
+        embedding_x = self.add_prompt(embedding_x)
         
         if self.args.delta_t_position == 0:
             embedding_x = self.add_delta_t(embedding_x, nwp_id)
@@ -1317,10 +1335,65 @@ class Prompt_Tuning_Model6_5(nn.Module):
         # body_output = self.layernorm(body_output) 
         
         prediction_lead_time = self.prediction_head(body_output)
-        
         return prediction_lead_time
     
 
+
+
+class Prompt_Tuning_Model6_52(Prompt_Tuning_Model6_5):
+    def __init__(self, cnn_embed, body_model_name="vit", prediction_head=None, args=None):
+        super(Prompt_Tuning_Model6_52, self).__init__(cnn_embed, body_model_name, prediction_head, args)
+        
+    
+    def forward(self, x):
+        batch_size = x[0].shape[0]
+        nwp_data = x[0]  # [batch_size, seq_len, n_fts, height, width]
+        his = x[1]
+        nwp_id = x[2]  # [batch_size], integer values indicating valid sequence length
+        hres_info = x[3]  # [batch_size, hres_padded_len, 4]  
+
+        # Transform hres_info to embedding
+        hres_embedding = self.transform_hres(hres_info)  # [batch_size, hres_padded_len, 768]
+        
+        # Process hres_info through GRU
+        hres_output, _ = self.gru(hres_embedding)  # [batch_size, hres_padded_len, 768]
+        
+        # Get padding mask
+        hres_padding_mask = self.get_hres_mask(hres_info, nwp_id)
+        
+        # Extract the last valid output for each sequence using the mask and nwp_id
+        
+        hres_last = self.get_hres_embedding(hres_output, nwp_id, hres_padding_mask)
+
+        # Process nwp_data 
+        embedding_x = self.cnn_embed(nwp_data)
+        embedding_x = self.add_prompt(embedding_x)
+        
+        if self.args.delta_t_position == 0:
+            embedding_x = self.add_delta_t(embedding_x, nwp_id)
+        
+        if self.use_position_embedding:
+            embedding_x += self.positions
+            
+        body_output = self.body_model(embedding_x)
+        body_output = body_output.last_hidden_state
+        
+        if self.args.delta_t_position == 1:
+            body_output = self.add_delta_t(body_output, nwp_id)
+            
+        body_output = body_output.view(batch_size, -1)
+        
+        his_embed = self.linear(his)
+        
+        # Concatenate GRU output with other features
+        body_output = torch.cat([body_output, his_embed, hres_last], dim=-1)
+        
+        # Apply layer normalization
+        # body_output = self.layernorm(body_output) 
+        
+        prediction_lead_time = self.prediction_head(body_output)
+        return prediction_lead_time
+    
 
 class Prompt_Tuning_Model6_6(nn.Module):
     def __init__(self, cnn_embed, body_model_name="vit", args=None):

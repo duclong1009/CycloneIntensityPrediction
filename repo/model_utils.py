@@ -113,19 +113,25 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
 
     list_train_loss = []
     list_valid_loss = []
-
+    
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+    
     # Initialize the StepLR scheduler
     if args._use_scheduler_lr:
         if args.scheduler_type == "steplr":
             scheduler = StepLR(optimizer, step_size=5, gamma=0.1)  # Adjust step_size and gamma as needed
         elif args.scheduler_type == 'reducelronplateau':
-            scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=4, verbose=True)
+            scheduler = ReduceLROnPlateau(optimizer, 
+                                          mode='min', 
+                                          factor=0.5, 
+                                          patience=4,
+                                          min_lr = 1e-6, 
+                                          verbose=True)
         else:
             raise ValueError("scheduler")
         
     for epoch in range(args.epochs):
-        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
-
         epoch_loss = []
         if not early_stopping.early_stop:
             model.train()
@@ -142,7 +148,7 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
             train_epoch_loss = sum(epoch_loss) / len(epoch_loss)
             list_train_loss.append(train_epoch_loss)
 
-            valid_dataloader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
+
             model.eval()
             with torch.no_grad():
                 valid_epoch_loss = []
@@ -155,7 +161,7 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
                 list_valid_loss.append(valid_epoch_loss)
 
             early_stopping(valid_epoch_loss, model)
-
+            
             # Step the scheduler every epoch
             if args._use_scheduler_lr:
                 current_lr = optimizer.param_groups[0]['lr']
