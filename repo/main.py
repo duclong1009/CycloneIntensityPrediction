@@ -83,12 +83,15 @@ def get_option():
     parser.add_argument("--max_lead_time", type=int, default=4)
     parser.add_argument("--start_lead_time", type=int, default=0)
     
+    ##prompt65 combination of HARMONIC and HRES
+    parser.add_argument("--delta_t_position", type=int, default=0, choices=[0,1])
+    parser.add_argument("--prompt_type", default=0, choices=[0,1], help="0 for default all prompt for each patch is the same, 1 for each embedding for each patch") 
     # parser.add_argument("--input_channels",type=int, default=58)
     args = parser.parse_args()
     return args 
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     
     args = get_option()
     
@@ -325,7 +328,22 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    
+    
+    
+    elif args.model_type == "prompt_vit6_6":
+        print("No. fts", n_fts[0])
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
         
+        prediction_head = orca_model.PredictionHead(n_patchs= (args.image_size // 10) ** 2 +1)
+        print(args)
+        train_model = orca_model.Prompt_Tuning_Model6_6(cnn_embedder, args.body_model_name,args)
+        
+        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    
     # args.name = "test"
 
     if args._use_wandb:
