@@ -327,7 +327,7 @@ if __name__ == "__main__":
         print(args)
         train_model = orca_model.Prompt_Tuning_Model6_5(cnn_embedder, args.body_model_name, prediction_head,args)
         
-        args.name = (f"{args.model_type}-kernel_{args.kernel_size}-tpos_{args.delta_t_position}-prompt_{args.prompt_type}-positionemb_{args.use_position_embedding}-freee_{args.freeze}-LRS_{args.scheduler_type}_{args.scheduler_type}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        args.name = (f"{args.model_type}-kernel_{args.kernel_size}-tpos_{args.delta_t_position}-prompt_{args.prompt_type}-positionemb_{args.use_position_embedding}-freee_{args.freeze}-LRS_{args._use_scheduler_lr}_{args.scheduler_type}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
         train_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
@@ -337,13 +337,14 @@ if __name__ == "__main__":
         HARMONIC + HRES + CNN_attention 
         """
         print("No. fts", n_fts[0])
+        args.n_fts = n_fts[0]
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=args.kernel_size)
         
         prediction_head = orca_model.PredictionHead(n_patchs= (args.image_size // 10) ** 2 +2)
         print(args)
         train_model = orca_model.Prompt_Tuning_Model6_52(cnn_embedder, args.body_model_name, prediction_head,args)
         
-        args.name = (f"{args.model_type}-kernel_{args.kernel_size}-tpos_{args.delta_t_position}-prompt_{args.prompt_type}-positionemb_{args.use_position_embedding}-freee_{args.freeze}-LRS_{args.scheduler_type}_{args.scheduler_type}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        args.name = (f"{args.model_type}-kernel_{args.kernel_size}-tpos_{args.delta_t_position}-prompt_{args.prompt_type}-positionemb_{args.use_position_embedding}-freee_{args.freeze}-LRS_{args._use_scheduler_lr}_{args.scheduler_type}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
         train_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)

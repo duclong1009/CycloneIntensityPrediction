@@ -1338,11 +1338,74 @@ class Prompt_Tuning_Model6_5(nn.Module):
         return prediction_lead_time
     
 
+class ChannelSELayer(nn.Module):
+    """
+    Re-implementation of Squeeze-and-Excitation (SE) block described in:
+        *Hu et al., Squeeze-and-Excitation Networks, arXiv:1709.01507*
 
+    """
 
+    def __init__(self, num_channels, reduction_ratio=2):
+        """
+
+        :param num_channels: No of input channels
+        :param reduction_ratio: By how much should the num_channels should be reduced
+        """
+        super(ChannelSELayer, self).__init__()
+        num_channels_reduced = num_channels // reduction_ratio
+        self.reduction_ratio = reduction_ratio
+        self.fc1 = nn.Linear(num_channels, num_channels_reduced, bias=True)
+        self.fc2 = nn.Linear(num_channels_reduced, num_channels, bias=True)
+        self.relu = nn.ReLU()
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, input_tensor):
+        """
+
+        :param input_tensor: X, shape = (batch_size, num_channels, H, W)
+        :return: output tensor
+        """
+        batch_size, num_channels, H, W = input_tensor.size()
+        # Average along each channel
+        squeeze_tensor = input_tensor.view(batch_size, num_channels, -1).mean(dim=2)
+
+        # channel excitation
+        fc_out_1 = self.relu(self.fc1(squeeze_tensor))
+        fc_out_2 = self.sigmoid(self.fc2(fc_out_1))
+
+        a, b = squeeze_tensor.size()
+        output_tensor = torch.mul(input_tensor, fc_out_2.view(a, b, 1, 1))
+        return output_tensor
+
+class SEResNet(nn.Module):
+    def __init__(self, in_channels, out_channels, reduction_ratio=2):
+        super(SEResNet, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.se = ChannelSELayer(out_channels, reduction_ratio)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+
+        out = self.se(out)  # Apply SE block here
+
+        out += identity  # Residual connection (optional)
+        out = self.relu(out)
+
+        return out
+    
 class Prompt_Tuning_Model6_52(Prompt_Tuning_Model6_5):
     def __init__(self, cnn_embed, body_model_name="vit", prediction_head=None, args=None):
         super(Prompt_Tuning_Model6_52, self).__init__(cnn_embed, body_model_name, prediction_head, args)
+        self.channel_atten = ChannelSELayer(args.n_fts)
         
     
     def forward(self, x):
@@ -1351,6 +1414,8 @@ class Prompt_Tuning_Model6_52(Prompt_Tuning_Model6_5):
         his = x[1]
         nwp_id = x[2]  # [batch_size], integer values indicating valid sequence length
         hres_info = x[3]  # [batch_size, hres_padded_len, 4]  
+
+        
 
         # Transform hres_info to embedding
         hres_embedding = self.transform_hres(hres_info)  # [batch_size, hres_padded_len, 768]
@@ -1364,7 +1429,13 @@ class Prompt_Tuning_Model6_52(Prompt_Tuning_Model6_5):
         # Extract the last valid output for each sequence using the mask and nwp_id
         
         hres_last = self.get_hres_embedding(hres_output, nwp_id, hres_padding_mask)
-
+        
+        
+        ## Do the channel attention in this place  for the nwp_data to highlight the importance of each feature
+        
+        
+        nwp_data = self.channel_atten(nwp_data)
+        
         # Process nwp_data 
         embedding_x = self.cnn_embed(nwp_data)
         embedding_x = self.add_prompt(embedding_x)
