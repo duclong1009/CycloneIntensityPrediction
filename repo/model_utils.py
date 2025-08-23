@@ -132,7 +132,10 @@ def train_func(model, train_dataset, valid_dataset, early_stopping, loss_func, o
             for data in tqdm(train_dataloader):
                 optimizer.zero_grad()
                 x_train, y_train = to_float(data['x'], device), to_float(data['y'],device)
-                y_ = model(x_train)
+                y_ = model(x_train) ## 32,1,5
+                # if y_.shape[-1] != 1:
+                #     lead_time = data['x'][2]
+                #       # Select outputs using batch indices and lead times
                 loss = loss_func(y_.squeeze(), y_train.squeeze())
 
                 loss.backward()

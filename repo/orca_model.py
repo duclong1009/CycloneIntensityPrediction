@@ -62,7 +62,31 @@ class PredictionHead(nn.Module):
         x = self.gelu(self.linear_head2(x))
         return self.linear_head3(x)
 
+class PredictionHead3(nn.Module):
+    def __init__(self,dim=768, n_patchs=100):
 
+        super(PredictionHead3, self).__init__()
+        
+        self.linear_head1 = nn.Linear(dim * 126, 512)
+        self.linear_head2 = nn.Linear(512, 128)
+        self.linear_head3 = nn.Linear(128, 1)
+        self.gelu = nn.GELU()
+
+    def forward(self,x):
+        # Check if input shape needs padding to reach 126 patches
+        if x.shape[1] < 126:
+            # Calculate padding needed
+            pad_size = 126 - x.shape[1]
+            # Create zero padding tensor
+            padding = torch.zeros(x.shape[0], pad_size, x.shape[2], device=x.device)
+            # Concatenate padding along patch dimension
+            x = torch.cat([x, padding], dim=1)
+        # input shape [32,126,768]
+        ### adding promt token at the end of body model
+        x = x.reshape(x.shape[0], -1)
+        x = self.gelu(self.linear_head1(x))
+        x = self.gelu(self.linear_head2(x))
+        return self.linear_head3(x)
 
 class Prompt_Tuning_Model0(nn.Module):
     def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None ):
@@ -1028,7 +1052,6 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
 
         list_output = []
         expaned_prompt_token = self.prompt_token.unsqueeze(1)
-        
         expaned_prompt_token = expaned_prompt_token.repeat(1, (self.image_size // self.kernel_size) ** 2,1)
         for sample_id in range(batch_size):
             sample_nwp_id = nwp_id[sample_id]
@@ -1038,12 +1061,13 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
             # print(sample_nwp_id)
             
             for lead_time in range(int(sample_nwp_id)+1):
+
                 embedding_x = self.cnn_embed(sample_nwp_data[lead_time,:,:,:].unsqueeze(0)) ### 1, 100,x
 
                 embedding_x = torch.cat([embedding_x, expaned_prompt_token], dim=-1) ### 1, 100, 768 , 
                 if self.use_position_embedding:
                     embedding_x += self.positions
-                body_output=  self.body_model(embedding_x)
+                body_output=  self.body_model(embedding_x) 
                 body_output = body_output.last_hidden_state
                 
                 his_embed = self.linear(current_his) #768
@@ -1056,5 +1080,105 @@ class Prompt_Tuning_Model6_Progressive2(nn.Module):
                 current_his = torch.concat([current_his, prediction_lead_tine], -1)[:,-64:]
             
             list_output.append(prediction_lead_tine)
+
         output = torch.concat(list_output,0)
+
         return output
+    
+class Prompt_Tuning_Model6_Progressive3(nn.Module):
+    def __init__(self,cnn_embed, body_model_name="vit", prediction_head=None, args=None):
+        super(Prompt_Tuning_Model6_Progressive3,self).__init__()
+        
+        prompt_dim = args.prompt_dims
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            self.body_model =  copy.deepcopy(model.encoder)
+
+        elif body_model_name == 'scratch_vit':
+            config = ViTConfig()  # Use default configuration or modify as needed   
+            model = ViTModel(config)
+            self.body_model =  copy.deepcopy(model.encoder)
+
+        else:
+            raise ValueError("Not correct body model name")
+        
+        if args.freeze:
+            for param in self.body_model.parameters():
+                param.requires_grad = False
+                
+        self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
+
+        self.cnn_embed = cnn_embed
+        self.linear = nn.Linear(64, 768)
+        self.prediction_head = prediction_head
+        self.prompt_token = nn.Parameter(torch.randn(1, 125,prompt_dim)) 
+        
+        self.use_position_embedding = args.use_position_embedding
+        self.image_size = args.image_size
+        self.kernel_size = 10
+        
+        
+        if self.use_position_embedding:
+            emb_size = 768
+            self.positions = nn.Parameter(torch.randn((self.image_size // self.kernel_size) ** 2, emb_size))
+
+
+    def forward(self,x):
+        ### adding promt token at the begin of body model
+        
+        """
+        format for x: [nwp_data, his, nwp_id]
+        nwp_data.shape [32,5, 63,100,100]]
+
+        """
+        
+        batch_size = x[0].shape[0]
+        nwp_data = x[0]
+        his = x[1]
+        lead = 5
+        nwp_id =  x[2]
+        # nwp_id = torch.tensor([4] * batch_size).to(x[0].device)
+
+        
+        # prompt_token_expanded = self.prompt_token.expand(batch_size, )  # Expand prompt token to batch 
+
+        list_output = []
+        # expaned_prompt_token = self.prompt_token.unsqueeze(1)
+        
+        expaned_prompt_token = self.prompt_token.repeat(batch_size, 1,1)
+        current_his = copy.deepcopy(his)
+
+        for lt in range(lead):
+
+            lead_time = [i for i in range(lt + 1)]
+            nwp_sample = nwp_data[:, lead_time, :,:,:] # 32,2,63,50,50
+            if len(nwp_sample.shape) == 4:
+                nwp_sample = nwp_sample.unsqueeze(1)
+            # Reshape from (32, 2, 63, 50, 50) to (64, 63, 50, 50)
+            nwp_sample = nwp_sample.reshape(-1, nwp_sample.shape[2], nwp_sample.shape[3], nwp_sample.shape[4])
+            embedding_x = self.cnn_embed(nwp_sample) # 64, 25,768
+            embedding_x = embedding_x.reshape(batch_size, -1, embedding_x.shape[-1]) # 32, 50, 768
+            num_patchees = embedding_x.shape[1]
+            current_prompts = expaned_prompt_token[:,:num_patchees, :]
+            embedding_x = torch.cat([embedding_x, current_prompts], dim=-1) ### 1, 100, 768 , 
+            
+            if self.use_position_embedding:
+                embedding_x += self.positions
+
+            body_output=  self.body_model(embedding_x) 
+            body_output = body_output.last_hidden_state
+            his_embed = self.linear(current_his) #768
+            body_output = torch.cat([body_output, his_embed[:, None, :]], 1)
+            body_output = self.layernorm(body_output)
+            prediction_lead_tine = self.prediction_head(body_output)
+            list_output.append(prediction_lead_tine)
+
+            current_his = torch.concat([current_his, prediction_lead_tine], -1)[:,-64:]
+
+        output = torch.stack(list_output, -1)
+        # Convert nwp_id to long tensor for indexing
+        nwp_id = nwp_id.long()
+
+        batch_indices = torch.arange(output.shape[0])
+        r_output = output[batch_indices, :, nwp_id]
+        return r_output
