@@ -1,0 +1,15 @@
+# python repo/main2.py --model_type simple_cnn  --batch_size 32 --lr 1e-7 --epochs 1000 --patience 10 --data_dir data07/cropped_data  --transform_groundtruth --loss_func mse  --_use_wandb
+
+
+
+### Tuning patch_size
+python repo/main2.py --model_type cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/generated_data2/data1 --transform_groundtruth --_use_wandb --group_name cnn_data1 --patience 20
+python repo/main2.py --model_type cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/generated_data2/data2 --transform_groundtruth --_use_wandb --group_name cnn_data2 --patience 20
+python repo/main2.py --model_type cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/generated_data2/data3 --transform_groundtruth --_use_wandb --group_name cnn_data3 --patience 20
+python repo/main2.py --model_type cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/generated_data2/data4 --transform_groundtruth --_use_wandb --group_name cnn_data4 --patience 20
+
+
+python repo/main2.py --model_type cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/generated_data2/data1 --_use_wandb --group_name cnn_data1 --patience 20
+python repo/main2.py --model_type cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/generated_data2/data2 --_use_wandb --group_name cnn_data2 --patience 20
+python repo/main2.py --model_type cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/generated_data2/data3 --_use_wandb --group_name cnn_data3 --patience 20
+python repo/main2.py --model_type cnn  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir /home/user01/aiotlab/longnd/cyclone_prediction/raw_data/generated_data2/data4 --_use_wandb --group_name cnn_data4 --patience 20

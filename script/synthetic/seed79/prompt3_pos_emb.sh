@@ -1,0 +1,28 @@
+# python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-7 --epochs 1000 --patience 10 --data_dir data07/cropped_data_not_z  --transform_groundtruth --loss_func mse  --_use_wandb
+
+
+
+### Tuning patch_size
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir synthetic_data --transform_groundtruth --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-6 --epochs 1000 --patience 10 --data_dir synthetic_data --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-7 --epochs 1000 --patience 10 --data_dir synthetic_data --transform_groundtruth --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-7 --epochs 1000 --patience 10 --data_dir synthetic_data --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-5 --epochs 1000 --patience 10 --data_dir synthetic_data --transform_groundtruth --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-5 --epochs 1000 --patience 10 --data_dir synthetic_data --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-4 --epochs 1000 --patience 10 --data_dir synthetic_data --transform_groundtruth --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 1e-4 --epochs 1000 --patience 10 --data_dir synthetic_data --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 5e-6 --epochs 1000 --patience 10 --data_dir synthetic_data --transform_groundtruth --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 5e-6 --epochs 1000 --patience 10 --data_dir synthetic_data --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 5e-7 --epochs 1000 --patience 10 --data_dir synthetic_data --transform_groundtruth --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 5e-7 --epochs 1000 --patience 10 --data_dir synthetic_data --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 5e-5 --epochs 1000 --patience 10 --data_dir synthetic_data --transform_groundtruth --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 5e-5 --epochs 1000 --patience 10 --data_dir synthetic_data --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 5e-4 --epochs 1000 --patience 10 --data_dir synthetic_data --transform_groundtruth --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
+python repo/main2.py --model_type prompt_vit3  --batch_size 32 --lr 5e-4 --epochs 1000 --patience 10 --data_dir synthetic_data --_use_wandb --group_name prompt_vit3_seed10 --use_position_embedding --seed 79
