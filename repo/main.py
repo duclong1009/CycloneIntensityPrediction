@@ -13,9 +13,7 @@ import orca_model
         
 def get_option():
     parser = argparse.ArgumentParser()
-    
-    ## data
-    
+
     ## CNN config
     parser.add_argument("--output_channels",type=int, default=128)
     parser.add_argument("--kernel_size", type=int,  default=3)
@@ -83,6 +81,13 @@ def get_option():
     parser.add_argument("--max_lead_time", type=int, default=4)
     parser.add_argument("--start_lead_time", type=int, default=0)
     
+    parser.add_argument("--historical_data_length", type=int, default=10)
+    parser.add_argument("--historical_nwp_length", type=int, default=2)
+
+    parser.add_argument("--patch_size_t", type=int, default=1)
+    parser.add_argument("--patch_size_h", type=int, default=10)
+    parser.add_argument("--patch_size_w", type=int, default=10)
+
     # parser.add_argument("--input_channels",type=int, default=58)
     args = parser.parse_args()
     return args 
@@ -189,8 +194,7 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-        
-        
+           
     elif args.model_type == "prompt_vit7":
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768, kernel_size=10)
         
@@ -258,8 +262,7 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-
-    
+  
     elif args.model_type == "prompt_vit6_3":
         print("No. fts", n_fts[0])
         cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
@@ -286,7 +289,6 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_2(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
-    
     
     elif args.model_type == "convlstm1":
         # cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768 - args.prompt_dims, kernel_size=10)
@@ -321,10 +323,25 @@ if __name__ == "__main__":
         print(args)
         train_model = orca_model.Prompt_Tuning_Model6_5(cnn_embedder, args.body_model_name, prediction_head,args)
         
-        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-HL-{args.historical_data_length}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
         train_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        
+    elif args.model_type == "prompt_vit6_6":
+        print("No. fts", n_fts[0])
+
+        patch_size = (args.patch_size_t, args.patch_size_h, args.patch_size_w)
+        cnn_embedder = orca_model.PatchEmbedding3D(in_channels=n_fts[0], expected_output_dim=768 - args.prompt_dims, patch_size=patch_size, n_timestep=args.historical_nwp_length, args=args)
+        n_patches = cnn_embedder.n_patches
+        prediction_head = orca_model.PredictionHead(n_patchs= n_patches + 2)
+        print(args)
+        train_model = orca_model.Prompt_Tuning_Model6_6(cnn_embedder, args.body_model_name, prediction_head,args)
+        
+        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-HL-{args.historical_data_length}-IZ_{args.image_size}-PS_{args.patch_size_t}_{args.patch_size_h}_{args.patch_size_w}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        train_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         
     # args.name = "test"
 
@@ -351,7 +368,7 @@ if __name__ == "__main__":
         patience=args.patience,
         verbose=True,
         delta=args.delta,
-        path=f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt",
+        path=f"output/{args.group_name}/checkpoint/{args.name}.pt",
     )
 
     #### Model initialization
@@ -385,10 +402,10 @@ if __name__ == "__main__":
     list_train_loss, list_valid_loss = model_utils.train_func(train_model, train_dataset, valid_dataset, early_stopping, loss_func, optimizer, args, device)
     
     #### Model testing 
-    model_utils.load_model(train_model, f"output/{args.group_name}/checkpoint/stdgi_{args.name}.pt")
+    model_utils.load_model(train_model, f"output/{args.group_name}/checkpoint/{args.name}.pt")
     
     if args._use_wandb:
-        wandb.run.summary["beet_training_loss"] = early_stopping.best_score
+        wandb.run.summary["best_training_loss"] = early_stopping.best_score
 
     # besttrack_scaler, nwp_scaler = train_dataset.get_scaler() 
             

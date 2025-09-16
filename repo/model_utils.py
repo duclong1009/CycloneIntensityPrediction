@@ -515,15 +515,15 @@ def fit_scalers_in_batches(args, batch_size=100):
         # Fit scalers
         print("X_train_reshaped", x_train_reshaped.shape)
         x_train_scaled = scaler.fit_transform(x_train_reshaped)
-        os.makedirs(f"{args.data_dir}/scaler", exist_ok=True)
-        with open(f"{args.data_dir}/scaler/scaler.pkl", "wb") as f:
-            pickle.dump(scaler, f)
+        # os.makedirs(f"{args.data_dir}/scaler", exist_ok=True)
+        # with open(f"{args.data_dir}/scaler/scaler.pkl", "wb") as f:
+        #     pickle.dump(scaler, f)
         
-        with open(f"{args.data_dir}/scaler/bt_scaler.pkl", "wb") as f:
-            pickle.dump(bt_scaler,f)
+        # with open(f"{args.data_dir}/scaler/bt_scaler.pkl", "wb") as f:
+        #     pickle.dump(bt_scaler,f)
         
-        with open(f"{args.data_dir}/scaler/x_shape.json", "w") as f:
-            x_shape = json.dump(x_shape,f)
+        # with open(f"{args.data_dir}/scaler/x_shape.json", "w") as f:
+        #     x_shape = json.dump(x_shape,f)
     print("Preprocess Done!!!")
     return scaler, bt_scaler, n_fts
 
