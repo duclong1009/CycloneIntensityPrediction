@@ -929,10 +929,6 @@ class VITDataset2(Dataset):
 
     def __len__(self):
         return self.x_train.shape[0]
-
-
-
-
    
 class VITDataset6_6(Dataset):
     def __init__(self, data_dir="cutted_data/train", mode="train", nwp_scaler=None, bt_scaler=None, args=None, 
@@ -1083,22 +1079,6 @@ class VITDataset6_6(Dataset):
 
         # Scale data
         arr, bt_wp = self.fit_data(arr, bt_wp)
-
-        # Pad arr to max_seq_len if it's a sequence
-        if len(arr.shape) == 4:  # Sequence data
-            padding_size = self.max_seq_len - seq_len
-            if padding_size > 0:
-                padding = np.zeros((padding_size, arr.shape[1], arr.shape[2], arr.shape[3]))
-                arr = np.concatenate([arr, padding], axis=0)
-
-
-        # Convert to torch tensor and return with length
-        # arr = torch.from_numpy(arr).float()
-        # his = torch.from_numpy(his).float() 
-        # nwp_id = torch.tensor(nwp_id).long()
-        
-        # hres_info = torch.from_numpy(hres_info).float()
-        
         
         return {"x": [arr, his, nwp_id, hres_info], "y": bt_wp, }
 

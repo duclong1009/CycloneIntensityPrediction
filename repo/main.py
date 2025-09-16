@@ -81,13 +81,14 @@ def get_option():
     parser.add_argument("--max_lead_time", type=int, default=4)
     parser.add_argument("--start_lead_time", type=int, default=0)
     
-    parser.add_argument("--historical_data_length", type=int, default=10)
+    parser.add_argument("--historical_data_length", type=int, default=64)
     parser.add_argument("--historical_nwp_length", type=int, default=2)
 
     parser.add_argument("--patch_size_t", type=int, default=1)
     parser.add_argument("--patch_size_h", type=int, default=10)
     parser.add_argument("--patch_size_w", type=int, default=10)
 
+    parser.add_argument("--prompt_type",type=int, default=0)
     # parser.add_argument("--input_channels",type=int, default=58)
     args = parser.parse_args()
     return args 
@@ -342,7 +343,22 @@ if __name__ == "__main__":
         train_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    
+    elif args.model_type == "prompt_vit6_6":
+        print("No. fts", n_fts[0])
+
+        patch_size = (args.patch_size_t, args.patch_size_h, args.patch_size_w)
+        cnn_embedder = orca_model.PatchEmbedding3D(in_channels=n_fts[0], expected_output_dim=768 - args.prompt_dims, patch_size=patch_size, n_timestep=args.historical_nwp_length, args=args)
+        n_patches = cnn_embedder.n_patches
+        prediction_head = orca_model.PredictionHead(n_patchs= n_patches + 2)
+        print(args)
+        train_model = orca_model.Prompt_Tuning_Model6_6(cnn_embedder, args.body_model_name, prediction_head,args)
         
+        args.name = (f"{args.model_type}-prt_{args.prompt_type}-prl_{args.prompt_length}-freee_{args.freeze}-HL-{args.historical_data_length}-IZ_{args.image_size}-PS_{args.patch_size_t}_{args.patch_size_h}_{args.patch_size_w}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        train_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+
     # args.name = "test"
 
     if args._use_wandb:
