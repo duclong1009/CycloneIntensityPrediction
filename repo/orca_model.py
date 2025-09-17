@@ -1397,8 +1397,6 @@ class PatchEmbedding3D(nn.Module):
 
         return x
 
-
-
 class Prompt_Tuning_Model6_6(nn.Module):
     def __init__(self, cnn_embed, body_model_name="vit", prediction_head=None, args=None):
         super(Prompt_Tuning_Model6_6, self).__init__()

@@ -405,9 +405,9 @@ from sklearn.metrics import (
 
 def cal_acc(y_prd, y_grt):
     mae = mean_absolute_error(y_grt, y_prd)
-    mse = mean_squared_error(y_grt, y_prd, squared=True)
+    mse = mean_squared_error(y_grt, y_prd)
     mape = mean_absolute_percentage_error(y_grt, y_prd)
-    rmse = mean_squared_error(y_grt, y_prd, squared=False)
+    rmse = np.sqrt(mse)  # Calculate RMSE directly from MSE
     corr = np.corrcoef(np.reshape(y_grt, (-1)), np.reshape(y_prd, (-1)))[0][1]
     r2 = r2_score(y_grt, y_prd)
     # mdape_ = mdape(y_grt,y_prd)
