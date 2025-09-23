@@ -1084,3 +1084,4 @@ class VITDataset6_6(Dataset):
 
     def __len__(self):
         return len(self.valid_indices)  # Updated to reflect filtered size
+        
