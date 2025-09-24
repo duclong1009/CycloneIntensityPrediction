@@ -1560,7 +1560,6 @@ class Prompt_Tuning_Model6_6(nn.Module):
         # Process nwp_data as before
         expanded_prompt_token = self.prompt_token.unsqueeze(1)
         expanded_prompt_token = expanded_prompt_token.repeat(batch_size, self.n_patches, 1)
-        breakpoint()
         embedding_x = self.cnn_embed(nwp_data)
         embedding_x = torch.cat([embedding_x, expanded_prompt_token], dim=-1)
         
