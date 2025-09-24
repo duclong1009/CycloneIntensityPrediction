@@ -1397,12 +1397,204 @@ class PatchEmbedding3D(nn.Module):
 
         return x
 
+class PatchEmbedding3D_2(nn.Module):
+    def __init__(self, patch_size=(1,10,10), expected_output_dim=128, n_timestep=7, args = None):
+        super(PatchEmbedding3D_2, self).__init__()
+        ### input shape: 32,10,63,50,50 -> each channel is a timestep of 
+        ### flow: input (32, 63, 10, 50, 50)
+        ### 1. reshape to (32*63, 1, 10, 50, 50) to process each channel independently
+        ### 2. apply conv3d with padding=(0, pad_h, pad_w) where:
+        ###    pad_h = pad_w = (patch_size - 1) // 2 to maintain spatial dims
+        ###    temporal dim doesn't need padding since we want to process full sequence
+        
+        hidden_dim = expected_output_dim // 10
+
+        height = args.image_size
+
+        temporal_pad = 0 if n_timestep % patch_size[0] == 0 else ((n_timestep // patch_size[0] + 1) * patch_size[0] - n_timestep)
+        spatial_pad = 0 if height % patch_size[1] == 0 else ((height // patch_size[1] + 1) * patch_size[1] - height)
+        n_patches = ((n_timestep + temporal_pad) // patch_size[0]) * ((height + spatial_pad) // patch_size[1]) ** 2
+        # First 3D conv to convert from batch, 13, 7, 21, 21 to batch, hidden_dim, 4, 6, 6
+        self.conv3d_1 = nn.Conv3d(
+            in_channels=1,
+            out_channels=hidden_dim,
+            kernel_size=patch_size,
+            stride=patch_size,
+            padding=(temporal_pad, spatial_pad, spatial_pad) ## change the padding when change the patch_size hẹ hẹ hẹ
+        )
+
+        self.projection = nn.Linear(hidden_dim * n_patches, expected_output_dim)
+        self.norm = nn.LayerNorm(expected_output_dim)
+        self.n_patches = 63
+
+    def forward(self, x):
+        # breakpoint()
+        # Input shape: (batch_size, 7, 13, 21, 21)
+        # Swap dimensions 1 and 2 to get (batch_size, 13, 7, 21, 21)
+        # x = x.permute(0, 2, 1, 3, 4)
+        # Input shape: (batch_size, 13, 7, 21, 21)
+        x_shape = x.shape
+        x = x.permute(0,2,1,3,4)
+        x = x.reshape(x_shape[0]*x_shape[2], x_shape[1], x_shape[3], x_shape[4]).unsqueeze(1)
+
+        x = self.conv3d_1(x)  # (batch_size, hidden_dim, 4, 6, 6)
+        x = x.permute(0,2,3,4,1)
+        x = x.reshape(x_shape[0], x_shape[2], x.shape[1] * x.shape[2] * x.shape[3], x.shape[-1])
+        x = x.reshape(x.shape[0], x.shape[1], -1)
+        x = F.gelu(x)
+        
+        # Reshape x from (batch_size, hidden_dim, t, h, w) to (batch_size, t*h*w, hidden_dim)
+        
+        # x = x.permute(0, 2, 3, 4, 1)  # (batch_size, t, h, w, channels) 
+        # x = x.reshape(batch_size, t*h*w, channels)  # (batch_size, t*h*w, channels)
+
+        x = self.projection(x)  # (batch_size, hidden_dim*2, 4, 3, 3)
+        
+        x = self.norm(x)
+
+        return x
+
+
 class Prompt_Tuning_Model6_6(nn.Module):
     def __init__(self, cnn_embed, body_model_name="vit", prediction_head=None, args=None):
         super(Prompt_Tuning_Model6_6, self).__init__()
         
         self.use_position_embedding = args.use_position_embedding
      
+
+        self.n_patches = cnn_embed.n_patches
+
+        prompt_dim = args.prompt_dims
+        if body_model_name == 'vit':
+            model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
+            self.body_model = copy.deepcopy(model.encoder)
+
+        elif body_model_name == 'scratch_vit':
+            config = ViTConfig()  # Use default configuration or modify as needed   
+            model = ViTModel(config)
+            self.body_model = copy.deepcopy(model.encoder)
+
+        else:
+            raise ValueError("Not correct body model name")
+        
+        if args.freeze:
+            for param in self.body_model.parameters():
+                param.requires_grad = False
+                
+        self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
+
+        self.cnn_embed = cnn_embed
+        self.linear = nn.Linear(64, 768)
+        self.prediction_head = prediction_head
+        self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
+        
+        self.max_lead_time = args.max_lead_time
+        self.start_lead_time = args.start_lead_time
+        
+        if self.use_position_embedding:
+            emb_size = 768
+            self.positions = nn.Parameter(torch.randn(self.n_patches, emb_size))
+
+        self.delta_t = nn.Parameter(torch.rand((self.max_lead_time - self.start_lead_time + 1), 768))
+       
+        
+        # Replace Transformer with GRU for hres_info
+        self.transform_hres = nn.Linear(4, 768)  # Transform hres_info features to 768
+        
+        # Use GRU instead of Transformer
+        self.gru = nn.GRU(input_size=768, hidden_size=768, num_layers=2, batch_first=True, dropout=0.1)
+
+    def add_delta_t(self, arr, lead_time):
+        list_lead = []
+        for lt in lead_time:
+            lt = lt - self.start_lead_time
+            corress_prompt = self.delta_t[int(lt)]
+            list_lead.append(corress_prompt)
+        add_prompt = torch.stack(list_lead, 0)
+        add_prompt = add_prompt.unsqueeze(1).repeat(1, self.n_patches, 1)
+        return arr + add_prompt
+
+    def get_hres_mask(self, hres_info, nwp_id):
+        device = next(self.parameters()).device
+        hres_padding_mask = torch.zeros((hres_info.shape[0], hres_info.shape[1]))
+        for i, lead_time in enumerate(nwp_id):
+            # Set 1s for valid positions (up to lead_time)
+            # Set 0s for padding positions (after lead_time)
+            hres_padding_mask[i, :int(lead_time)] = 1
+        return hres_padding_mask.to(device)
+
+    def get_hres_embedding(self, embeddings, nwp_id):
+        list_embeddings = []
+        batch_size = embeddings.shape[0]
+        for i in range(batch_size):
+            # Find the last non-padded position (where mask is 1)
+            last_valid_idx = int(nwp_id[i])  # Convert to 0-based indexing
+            if last_valid_idx < 0:
+                last_valid_idx = 0  # Handle edge case
+            list_embeddings.append(embeddings[i, last_valid_idx, :])
+        return torch.stack(list_embeddings, 0)
+
+    def forward(self, x):
+        """
+        format for x: [nwp_data, his, nwp_id, hres_info]
+        nwp_data.shape [batch_size, seq_len, 63, 100, 100]
+        hres_info.shape [batch_size, hres_padded_len, 4] (e.g., [32, 10, 4])
+        nwp_id: tensor of shape [batch_size] indicating the valid length for each sample
+        """
+        
+        batch_size = x[0].shape[0]
+        nwp_data = x[0]  # [batch_size, seq_len, n_fts, height, width]
+        his = x[1]
+        nwp_id = x[2]  # [batch_size], integer values indicating valid sequence length
+        hres_info = x[3]  # [batch_size, hres_padded_len, 4]  
+        
+        # Transform hres_info to embedding
+        hres_embedding = self.transform_hres(hres_info)  # [batch_size, hres_padded_len, 768]
+        
+        # Process hres_info through GRU
+        hres_output, _ = self.gru(hres_embedding)  # [batch_size, hres_padded_len, 768]
+        
+        # Extract the last valid output for each sequence using the mask and nwp_id
+        hres_last = self.get_hres_embedding(hres_output, nwp_id)
+
+        # Process nwp_data as before
+        expanded_prompt_token = self.prompt_token.unsqueeze(1)
+        expanded_prompt_token = expanded_prompt_token.repeat(batch_size, self.n_patches, 1)
+        embedding_x = self.cnn_embed(nwp_data)
+
+        print(embedding_x.shape, expanded_prompt_token.shape)
+
+        # print(embedding_x.shape, expanded_prompt_token.shape)
+        embedding_x = torch.cat([embedding_x, expanded_prompt_token], dim=-1)
+        
+        embedding_x = self.add_delta_t(embedding_x, nwp_id)
+        
+        if self.use_position_embedding:
+            embedding_x += self.positions
+            
+        body_output = self.body_model(embedding_x)
+        body_output = body_output.last_hidden_state
+        body_output = body_output.view(batch_size, -1)
+        
+        his_embed = self.linear(his)
+
+        # Concatenate GRU output with other features
+        body_output = torch.cat([body_output, his_embed, hres_last], dim=-1)
+        
+        # Apply layer normalization
+        # body_output = self.layernorm(body_output)
+        
+        prediction_lead_time = self.prediction_head(body_output)
+        
+        return prediction_lead_time
+
+
+
+class Prompt_Tuning_Model6_7(nn.Module):
+    def __init__(self, cnn_embed, body_model_name="vit", prediction_head=None, args=None):
+        super(Prompt_Tuning_Model6_7, self).__init__()
+        
+        self.use_position_embedding = args.use_position_embedding
 
         self.n_patches = cnn_embed.n_patches
 
@@ -1504,6 +1696,7 @@ class Prompt_Tuning_Model6_6(nn.Module):
         expanded_prompt_token = expanded_prompt_token.repeat(batch_size, self.n_patches, 1)
         
         embedding_x = self.cnn_embed(nwp_data)
+        print(embedding_x.shape, expanded_prompt_token.shape)
         embedding_x = torch.cat([embedding_x, expanded_prompt_token], dim=-1)
         
         embedding_x = self.add_delta_t(embedding_x, nwp_id)
@@ -1527,135 +1720,4 @@ class Prompt_Tuning_Model6_6(nn.Module):
         
         return prediction_lead_time
 
-
-
-# class Prompt_Tuning_Model6_7(nn.Module):
-#     def __init__(self, cnn_embed, body_model_name="vit", prediction_head=None, args=None):
-#         super(Prompt_Tuning_Model6_7, self).__init__()
-        
-#         self.use_position_embedding = args.use_position_embedding
-     
-
-#         self.n_patches = cnn_embed.n_patches
-
-#         prompt_dim = args.prompt_dims
-#         if body_model_name == 'vit':
-#             model = ViTModel.from_pretrained("google/vit-base-patch16-224-in21k")
-#             self.body_model = copy.deepcopy(model.encoder)
-
-#         elif body_model_name == 'scratch_vit':
-#             config = ViTConfig()  # Use default configuration or modify as needed   
-#             model = ViTModel(config)
-#             self.body_model = copy.deepcopy(model.encoder)
-
-#         else:
-#             raise ValueError("Not correct body model name")
-        
-#         if args.freeze:
-#             for param in self.body_model.parameters():
-#                 param.requires_grad = False
-                
-#         self.layernorm = nn.LayerNorm((768,), eps=1e-12, elementwise_affine=True)
-
-#         self.cnn_embed = cnn_embed
-#         self.linear = nn.Linear(64, 768)
-#         self.prediction_head = prediction_head
-#         self.prompt_token = nn.Parameter(torch.randn(1, prompt_dim)) 
-        
-#         self.max_lead_time = args.max_lead_time
-#         self.start_lead_time = args.start_lead_time
-        
-#         if self.use_position_embedding:
-#             emb_size = 768
-#             self.positions = nn.Parameter(torch.randn(self.n_patches, emb_size))
-
-#         self.delta_t = nn.Parameter(torch.rand((self.max_lead_time - self.start_lead_time + 1), 768))
-       
-        
-#         # Replace Transformer with GRU for hres_info
-#         self.transform_hres = nn.Linear(4, 768)  # Transform hres_info features to 768
-        
-#         # Use GRU instead of Transformer
-#         self.gru = nn.GRU(input_size=768, hidden_size=768, num_layers=2, batch_first=True, dropout=0.1)
-
-#     def add_delta_t(self, arr, lead_time):
-#         list_lead = []
-#         for lt in lead_time:
-#             lt = lt - self.start_lead_time
-#             corress_prompt = self.delta_t[int(lt)]
-#             list_lead.append(corress_prompt)
-#         add_prompt = torch.stack(list_lead, 0)
-#         add_prompt = add_prompt.unsqueeze(1).repeat(1, self.n_patches, 1)
-#         return arr + add_prompt
-
-#     def get_hres_mask(self, hres_info, nwp_id):
-#         device = next(self.parameters()).device
-#         hres_padding_mask = torch.zeros((hres_info.shape[0], hres_info.shape[1]))
-#         for i, lead_time in enumerate(nwp_id):
-#             # Set 1s for valid positions (up to lead_time)
-#             # Set 0s for padding positions (after lead_time)
-#             hres_padding_mask[i, :int(lead_time)] = 1
-#         return hres_padding_mask.to(device)
-
-#     def get_hres_embedding(self, embeddings, nwp_id):
-#         list_embeddings = []
-#         batch_size = embeddings.shape[0]
-#         for i in range(batch_size):
-#             # Find the last non-padded position (where mask is 1)
-#             last_valid_idx = int(nwp_id[i])  # Convert to 0-based indexing
-#             if last_valid_idx < 0:
-#                 last_valid_idx = 0  # Handle edge case
-#             list_embeddings.append(embeddings[i, last_valid_idx, :])
-#         return torch.stack(list_embeddings, 0)
-
-#     def forward(self, x):
-#         """
-#         format for x: [nwp_data, his, nwp_id, hres_info]
-#         nwp_data.shape [batch_size, seq_len, 63, 100, 100]
-#         hres_info.shape [batch_size, hres_padded_len, 4] (e.g., [32, 10, 4])
-#         nwp_id: tensor of shape [batch_size] indicating the valid length for each sample
-#         """
-        
-#         batch_size = x[0].shape[0]
-#         nwp_data = x[0]  # [batch_size, seq_len, n_fts, height, width]
-#         his = x[1]
-#         nwp_id = x[2]  # [batch_size], integer values indicating valid sequence length
-#         hres_info = x[3]  # [batch_size, hres_padded_len, 4]  
-
-#         # Transform hres_info to embedding
-#         hres_embedding = self.transform_hres(hres_info)  # [batch_size, hres_padded_len, 768]
-        
-#         # Process hres_info through GRU
-#         hres_output, _ = self.gru(hres_embedding)  # [batch_size, hres_padded_len, 768]
-        
-#         # Extract the last valid output for each sequence using the mask and nwp_id
-#         hres_last = self.get_hres_embedding(hres_output, nwp_id)
-
-#         # Process nwp_data as before
-#         expanded_prompt_token = self.prompt_token.unsqueeze(1)
-#         expanded_prompt_token = expanded_prompt_token.repeat(batch_size, self.n_patches, 1)
-        
-#         embedding_x = self.cnn_embed(nwp_data)
-#         embedding_x = torch.cat([embedding_x, expanded_prompt_token], dim=-1)
-        
-#         embedding_x = self.add_delta_t(embedding_x, nwp_id)
-        
-#         if self.use_position_embedding:
-#             embedding_x += self.positions
-            
-#         body_output = self.body_model(embedding_x)
-#         body_output = body_output.last_hidden_state
-#         body_output = body_output.view(batch_size, -1)
-        
-#         his_embed = self.linear(his)
-
-#         # Concatenate GRU output with other features
-#         body_output = torch.cat([body_output, his_embed, hres_last], dim=-1)
-        
-#         # Apply layer normalization
-#         # body_output = self.layernorm(body_output)
-        
-#         prediction_lead_time = self.prediction_head(body_output)
-        
-#         return prediction_lead_time
 

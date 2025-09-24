@@ -936,7 +936,7 @@ class VITDataset6_6(Dataset):
         super().__init__()
         self.historical_data_length = args.historical_data_length
         self.historical_nwp_length = args.historical_nwp_length
-        self.features = args.list_features        
+        # self.features = args.list_features        
         self.arr = np.load(data_dir)
 
         self.x_train, self.y_train, self.his, self.nwp_id = self.arr['x_arr'], self.arr['groundtruth'], self.arr['his'], self.arr['leading_time']
@@ -956,8 +956,8 @@ class VITDataset6_6(Dataset):
         self.nwp_id = self.nwp_id[valid_indices]
         self.checked_list = self.checked_list[valid_indices]  # Update checked_list to only valid samples
         self.check_data_values()
-        if self.features is not None:
-            self.x_train = self.x_train[:, self.features, :, :]
+        # if self.features is not None:
+        #     self.x_train = self.x_train[:, self.features, :, :]
 
         self.besttrack_scaler_path = besttrack_scaler_path
         self.nwp_scaler_path = nwp_scaler_path
@@ -1084,3 +1084,4 @@ class VITDataset6_6(Dataset):
 
     def __len__(self):
         return len(self.valid_indices)  # Updated to reflect filtered size
+        
