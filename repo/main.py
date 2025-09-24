@@ -380,11 +380,7 @@ if __name__ == "__main__":
         os.makedirs(f"output/{args.group_name}/checkpoint/")
 
     ## Initialize early stopping
-    early_stopping = model_utils.EarlyStopping(
-        patience=args.patience,
-        verbose=True,
-        delta=args.delta,
-        path=f"output/{args.group_name}/checkpoint/{args.name}.pt",
+    early_stopping = model_utils.EarlyStopping(patience=args.patience, verbose=True, delta=args.delta, path=f"output/{args.group_name}/checkpoint/{args.name}.pt",
     )
 
     #### Model initialization
