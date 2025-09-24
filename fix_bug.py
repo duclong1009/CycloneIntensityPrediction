@@ -1,6 +1,7 @@
 import torch
 from repo.orca_model import PatchEmbedding3D
-
+import repo.dataloader as dataloader
+import repo.model_utils as model_utils
 # Default config in class:
 # - patch_size=(2, 4, 4)
 # - in_channels=63
@@ -17,6 +18,7 @@ from repo.orca_model import PatchEmbedding3D
 
 # print("Input shape:", x.shape)
 # print("Output shape:", y.shape)  # e.g., (2, 36, 128) depending on padding/patching
+
 
 
 import torch
@@ -40,7 +42,9 @@ def main():
         def __init__(self):
             self.prompt_dims = 256  # Prompt dimension size
             self.use_position_embedding = False
+
             self.historical_nwp_length = 2  # Number of historical NWP timesteps
+
             self.patch_size_t = 1  # Temporal patch size
             self.patch_size_h = 10  # Height patch size 
             self.patch_size_w = 10  # Width patch size
@@ -49,8 +53,16 @@ def main():
             self.start_lead_time = 0
             self.freeze = False
             self.image_size = 100
+            self.data_dir = "/mnt/disk1/aiotlab/longnd/data/tc_data/basedyear_data_3days/data2"
+            self.historical_data_length = 20
 
+            
     args = Args()
+    nwp_scaler, bt_scaler, n_fts = model_utils.fit_scalers_in_batches(args)
+    train_dataset = dataloader.VITDataset6_6(data_dir= f"/mnt/disk1/aiotlab/longnd/data/tc_data/basedyear_data_3days/data2/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+    breakpoint()
+    cnn_embedder = orca_model.PatchEmbedding3D(in_channels=63, expected_output_dim=768 - 128, patch_size=10, n_timestep=args.historical_nwp_length, args=args)
+
     patch_size = (args.patch_size_t, args.patch_size_h, args.patch_size_w)
     n_fts = [input_channels]  # List containing number of input features
     # Build modules

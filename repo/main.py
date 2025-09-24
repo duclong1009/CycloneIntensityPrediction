@@ -339,18 +339,19 @@ if __name__ == "__main__":
         print(args)
         train_model = orca_model.Prompt_Tuning_Model6_6(cnn_embedder, args.body_model_name, prediction_head,args)
         
-        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-HL-{args.historical_data_length}-IZ_{args.image_size}-PS_{args.patch_size_t}_{args.patch_size_h}_{args.patch_size_w}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
+        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-HL-{args.historical_data_length}-NL_{args.historical_nwp_length}-IZ_{args.image_size}-PS_{args.patch_size_t}_{args.patch_size_h}_{args.patch_size_w}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}")
         train_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         valid_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_6(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
     
-    elif args.model_type == "prompt_vit6_6":
+    elif args.model_type == "prompt_vit6_7":
         print("No. fts", n_fts[0])
 
         patch_size = (args.patch_size_t, args.patch_size_h, args.patch_size_w)
-        cnn_embedder = orca_model.PatchEmbedding3D(in_channels=n_fts[0], expected_output_dim=768 - args.prompt_dims, patch_size=patch_size, n_timestep=args.historical_nwp_length, args=args)
-        n_patches = cnn_embedder.n_patches
-        prediction_head = orca_model.PredictionHead(n_patchs= n_patches + 2)
+        cnn_embedder = orca_model.PatchEmbedding3D_2(expected_output_dim=768 - args.prompt_dims, patch_size=patch_size, n_timestep=args.historical_nwp_length, args=args)
+       
+        n_patches = 63
+        prediction_head = orca_model.PredictionHead(n_patchs= n_patches +2)
         print(args)
         train_model = orca_model.Prompt_Tuning_Model6_6(cnn_embedder, args.body_model_name, prediction_head,args)
         

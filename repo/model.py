@@ -3,6 +3,7 @@ import torch.nn as nn
 import torchvision
 import torchvision.models as models
 import torch.nn.functional as F
+
 class SimpleCNN(nn.Module):
     def __init__(self, input_channels, output_channels,args):
         super(SimpleCNN, self).__init__()
