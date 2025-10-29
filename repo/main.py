@@ -355,6 +355,19 @@ if __name__ == "__main__":
         valid_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
         test_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
 
+    elif args.model_type == "prompt_vit6_5_noprompt":
+        print("No. fts", n_fts[0])
+        cnn_embedder = orca_model.CNNEmbedder(input_channels=n_fts[0], output_dim=768, kernel_size=10)
+        
+        prediction_head = orca_model.PredictionHead(n_patchs= (args.image_size // 10) ** 2 +2)
+        print(args)
+        train_model = orca_model.Prompt_Tuning_Model6_5_no_prompt(cnn_embedder, args.body_model_name, prediction_head,args)
+        
+        args.name = (f"{args.model_type}-prl_{args.prompt_length}-freee_{args.freeze}-HL-{args.historical_data_length}-IZ_{args.image_size}-loss_func_{args.loss_func}-{args.body_model_name}__{args.seed}_{args.batch_size}-lr_{args.lr}-tf_gr_{args.transform_groundtruth}-ps_{args.patch_size}-dim_{args.dim}-head_{args.heads}")
+        train_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/train/data.npz",mode="train", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        valid_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/valid/data.npz", mode="valid", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+        test_dataset = dataloader.VITDataset6_5(data_dir= f"{args.data_dir}/test/data.npz", mode="test", args=args, nwp_scaler=nwp_scaler, bt_scaler= bt_scaler)
+
 
     elif args.model_type == "prompt_vit6_6":
         print("No. fts", n_fts[0])
